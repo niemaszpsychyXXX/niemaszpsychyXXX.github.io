@@ -315,30 +315,12 @@
             
             questionsList.innerHTML = '';
             
-            // Process each user's questions
+            // Group questions by who asked them (question.from)
+            const questionsByAsker = {};
+            
+            // Process all questions and group by asker
             Object.keys(questionsData).forEach(userId => {
-                const userName = usersData[userId] || `Użytkownik (${userId.substring(0, 6)}...)`;
                 const userQuestions = questionsData[userId] || [];
-                
-                if (userQuestions.length === 0) return;
-                
-                const userSection = document.createElement('div');
-                userSection.className = 'user-section';
-                
-                const userHeader = document.createElement('h2');
-                userHeader.innerHTML = `
-                    <div class="user-avatar">${userName.charAt(0).toUpperCase()}</div>
-                    ${userName}
-                `;
-                
-                userSection.appendChild(userHeader);
-                
-                // Sort questions by timestamp (newest first)
-                userQuestions.sort((a, b) => {
-                    const timeA = a.timestamp ? new Date(a.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
-                    const timeB = b.timestamp ? new Date(b.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
-                    return timeB - timeA;
-                });
                 
                 userQuestions.forEach(question => {
                     // Skip questions with secret answers
@@ -346,10 +328,48 @@
                         return;
                     }
                     
+                    const askerId = question.from;
+                    if (!questionsByAsker[askerId]) {
+                        questionsByAsker[askerId] = [];
+                    }
+                    
+                    // Add the question with info about who it was asked to
+                    questionsByAsker[askerId].push({
+                        ...question,
+                        askedTo: userId,
+                        askedToName: usersData[userId] || `Użytkownik (${userId.substring(0, 6)}...)`
+                    });
+                });
+            });
+            
+            // Display questions grouped by asker
+            Object.keys(questionsByAsker).forEach(askerId => {
+                const askerName = usersData[askerId] || `Użytkownik (${askerId.substring(0, 6)}...)`;
+                const askerQuestions = questionsByAsker[askerId];
+                
+                if (askerQuestions.length === 0) return;
+                
+                const userSection = document.createElement('div');
+                userSection.className = 'user-section';
+                
+                const userHeader = document.createElement('h2');
+                userHeader.innerHTML = `
+                    <div class="user-avatar">${askerName.charAt(0).toUpperCase()}</div>
+                    ${askerName}
+                `;
+                
+                userSection.appendChild(userHeader);
+                
+                // Sort questions by timestamp (newest first)
+                askerQuestions.sort((a, b) => {
+                    const timeA = a.timestamp ? new Date(a.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
+                    const timeB = b.timestamp ? new Date(b.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
+                    return timeB - timeA;
+                });
+                
+                askerQuestions.forEach(question => {
                     const questionItem = document.createElement('div');
                     questionItem.className = 'question-item';
-                    
-                    const fromUser = usersData[question.from] || `Użytkownik (${question.from.substring(0, 6)}...)`;
                     
                     let answerHtml = '';
                     if (question.answer) {
@@ -357,7 +377,7 @@
                             <div class="answer-section">
                                 <div class="answer-item">
                                     <div class="answer-header">
-                                        <span class="answer-author">${userName}</span>
+                                        <span class="answer-author">${question.askedToName}</span>
                                         <span class="answer-time">${question.answer.timestamp || 'Brak daty'}</span>
                                     </div>
                                     <div class="answer-content">${question.answer.text || 'Brak odpowiedzi'}</div>
@@ -368,7 +388,7 @@
                     
                     questionItem.innerHTML = `
                         <div class="question-header">
-                            <span class="question-author">${fromUser}</span>
+                            <span class="question-author">Do: ${question.askedToName}</span>
                             <span class="question-time">${question.timestamp || 'Brak daty'}</span>
                         </div>
                         <div class="question-content">${question.text || 'Brak treści pytania'}</div>
