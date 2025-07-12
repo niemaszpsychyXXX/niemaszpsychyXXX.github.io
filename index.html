@@ -436,16 +436,90 @@
         .messages-btn:hover {
             background: #138496;
         }
+
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .login-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .login-input {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .login-error {
+            color: #ff4757;
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        
+        .blurred {
+            filter: blur(5px);
+            pointer-events: none;
+            user-select: none;
+        }
+        
     </style>
 </head>
 <body>
+     <!-- Add login overlay at the beginning of body -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-container">
+            <h2>Logowanie Administratora</h2>
+            <input type="password" id="adminPassword" class="login-input" placeholder="Wpisz hasło administratora">
+            <button onclick="checkAdminPassword()" class="login-btn">Zaloguj</button>
+            <div id="loginError" class="login-error"></div>
+        </div>
+    </div>
+
+     <div id="mainContent" class="blurred">
     <div class="auto-save-indicator" id="saveIndicator">Zapisano automatycznie</div>
     
     <div class="container">
         <!-- Interfejs Administratora -->
         <div id="admin-section" class="hidden">
             <h1>Anonimowe Pytania - Administrator</h1>
-
+        
             
             <div class="section">
                 <h2>Zarządzanie Wiadomościami</h2>
@@ -517,6 +591,7 @@
             </div>
         </div>
     </div>
+     </div>
 
     <button id="adminAccessBtn" class="admin-access-btn hidden" onclick="showAdminInterface()">Panel Admina</button>
 
@@ -533,6 +608,68 @@
         let questions = {};
         let currentUserId = null;
         let isAdmin = false;
+
+        async function loadAdminPassword() {
+            try {
+                const response = await fetch('secrets.json');
+                if (!response.ok) {
+                    throw new Error('Nie można załadować pliku secrets.json');
+                }
+                const data = await response.json();
+                return data.admin_password;
+            } catch (error) {
+                console.error('Błąd ładowania hasła:', error);
+                // Fallback password if secrets.json can't be loaded
+                return 'admin123';
+            }
+        }
+
+        // Check admin password
+        async function checkAdminPassword() {
+            const passwordInput = document.getElementById('adminPassword').value;
+            const correctPassword = await loadAdminPassword();
+            const errorDiv = document.getElementById('loginError');
+            
+            if (passwordInput === correctPassword) {
+                adminAuthenticated = true;
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainContent').classList.remove('blurred');
+                
+                // Now initialize the app
+                initApp();
+            } else {
+                errorDiv.textContent = 'Nieprawidłowe hasło';
+            }
+        }
+
+        // Initialize application after successful login
+        async function initApp() {
+            const success = await initFirebase();
+            if (!success) {
+                showAdminInterface();
+            }
+        }
+
+         // Modify showAdminInterface to check authentication
+        function showAdminInterface() {
+            if (!adminAuthenticated) {
+                document.getElementById('loginOverlay').style.display = 'flex';
+                document.getElementById('mainContent').classList.add('blurred');
+                return;
+            }
+            
+            isAdmin = true;
+            document.getElementById('adminAccessBtn').classList.add('hidden');
+            
+            document.getElementById('admin-section').classList.remove('hidden');
+            document.getElementById('user-section').classList.add('hidden');
+            currentUserId = null;
+            
+            // Update URL without reloading
+            const newUrl = window.location.href.split('?')[0];
+            window.history.pushState({ path: newUrl }, '', newUrl);
+        }
+
         
         // Firebase configuration
         const firebaseConfig = {
