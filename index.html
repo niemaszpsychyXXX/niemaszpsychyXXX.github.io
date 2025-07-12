@@ -436,82 +436,16 @@
         .messages-btn:hover {
             background: #138496;
         }
-
-        .login-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(5px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        
-        .login-container {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        
-        .login-container h2 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #333;
-        }
-        
-        .login-input {
-            width: 100%;
-            padding: 15px;
-            margin-bottom: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-        }
-        
-        .login-btn {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        
-        .login-error {
-            color: #ff4757;
-            text-align: center;
-            margin-top: 10px;
-            font-size: 14px;
-        }
-        
-        .blurred {
-            filter: blur(5px);
-            pointer-events: none;
-            user-select: none;
-        }
-        
     </style>
 </head>
 <body>
-    
-
-     <div id="mainContent">
     <div class="auto-save-indicator" id="saveIndicator">Zapisano automatycznie</div>
     
     <div class="container">
         <!-- Interfejs Administratora -->
-        <div id="admin-section">
+        <div id="admin-section" class="hidden">
             <h1>Anonimowe Pytania - Administrator</h1>
-        
+
             
             <div class="section">
                 <h2>Zarządzanie Wiadomościami</h2>
@@ -550,14 +484,14 @@
             </div>
             
             <div class="section">
-                <h2>Tiara Przydziału</h2>
-                <button onclick="generateAssignments()">Przydziel Ludziów</button>
+                <h2>Generuj Przydziały</h2>
+                <button onclick="generateAssignments()">Generuj Losowe Przydziały</button>
                 <div id="assignmentsList"></div>
             </div>
         </div>
         
         <!-- Interfejs Użytkownika -->
-        <div id="user-section">
+        <div id="user-section" class="hidden">
             <div class="user-interface">
                 <div class="user-header">
                     <h1 id="userWelcome">Witaj!</h1>
@@ -583,7 +517,8 @@
             </div>
         </div>
     </div>
-     </div>
+
+    <button id="adminAccessBtn" class="admin-access-btn hidden" onclick="showAdminInterface()">Panel Admina</button>
 
     <!-- Load Firebase SDK first -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -598,42 +533,6 @@
         let questions = {};
         let currentUserId = null;
         let isAdmin = false;
-        let adminAuthenticated = false;
-        const ADMIN_PASSWORD = "adminpass"; // Simple password for now
-
-       
-
-        // Initialize application after successful login
-        async function initApp() {
-            const success = await initFirebase();
-            if (success) {
-                showAdminInterface();
-            } else {
-                showMessage('error', 'Błąd połączenia z Firebase');
-            }
-        }
-
-        // Modify showAdminInterface to check authentication
-        function showAdminInterface() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('user');
-    
-            // If we're coming from a user link, don't show admin interface
-            if (userId) {
-                return;
-            }
-            
-            // Only show admin interface if authenticated
-            
-                
-                currentUserId = null;
-                
-                // Update URL without reloading
-                const newUrl = window.location.href.split('?')[0];
-                window.history.pushState({ path: newUrl }, '', newUrl);
-           
-        }
-
         
         // Firebase configuration
         const firebaseConfig = {
@@ -662,7 +561,7 @@
                     questions = data.questions || {};
                     
                     updateUI();
-                   
+                    checkUserAccess();
                     
                     showMessage('success', 'Dane zaktualizowane z Firebase!');
                 });
@@ -677,7 +576,25 @@
             }
         };
 
-       
+        // Check user access from URL
+        function checkUserAccess() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user');
+            
+            if (userId) {
+                // Check if user exists in database
+                const userExists = users.some(u => u.id === userId);
+                if (userExists) {
+                    openUserInterface(userId);
+                    return;
+                } else {
+                    showMessage('error', 'Użytkownik nie istnieje w bazie danych');
+                }
+            }
+            
+            // If no valid user ID, show admin interface
+            showAdminInterface();
+        }
 
         // Save data to Firebase
         window.saveDataToFirebase = async function() {
@@ -874,6 +791,7 @@
         function openUserInterface(userId) {
             isAdmin = false;
             // Hide admin access button for regular users
+            document.getElementById('adminAccessBtn').classList.add('hidden');
             
             currentUserId = userId;
             const user = users.find(u => u.id === userId);
@@ -901,6 +819,20 @@
             
             // Update URL without reloading
             const newUrl = window.location.href.split('?')[0] + '?user=' + userId;
+            window.history.pushState({ path: newUrl }, '', newUrl);
+        }
+        
+        // Show admin interface
+        function showAdminInterface() {
+            isAdmin = true;
+            document.getElementById('adminAccessBtn').classList.add('hidden');
+            
+            document.getElementById('admin-section').classList.remove('hidden');
+            document.getElementById('user-section').classList.add('hidden');
+            currentUserId = null;
+            
+            // Update URL without reloading
+            const newUrl = window.location.href.split('?')[0];
             window.history.pushState({ path: newUrl }, '', newUrl);
         }
         
@@ -963,7 +895,6 @@
                     answerSection = `
                         <div class="answer-section">
                             <div class="answer-text">${question.answer.text}</div>
-                            ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>' : ''}
                             <div class="answer-time">Odpowiedź: ${question.answer.timestamp}</div>
                         </div>
                     `;
@@ -971,10 +902,6 @@
                     answerSection = `
                         <div class="answer-form">
                             <textarea class="answer-textarea" id="answer-${index}" placeholder="Napisz odpowiedź..."></textarea>
-                            <div style="margin-bottom: 5px;">
-                                <input type="checkbox" id="secret-${index}">
-                                <label for="secret-${index}">Odpowiedz bezpośrednio</label>
-                            </div>
                             <button class="answer-btn" onclick="sendAnswer(${index})">Wyślij odpowiedź</button>
                         </div>
                     `;
@@ -993,7 +920,6 @@
         function sendAnswer(questionIndex) {
             const answerTextarea = document.getElementById(`answer-${questionIndex}`);
             const answerText = answerTextarea.value.trim();
-            const isSecret = document.getElementById(`secret-${questionIndex}`).checked;
             
             if (!answerText) {
                 alert('Proszę wpisać odpowiedź');
@@ -1007,8 +933,7 @@
             
             questions[currentUserId][questionIndex].answer = {
                 text: answerText,
-                timestamp: new Date().toLocaleString(),
-                secret: isSecret  // Add the secret flag to the answer
+                timestamp: new Date().toLocaleString()
             };
             
             saveDataToFirebase();
@@ -1031,3 +956,4 @@
     </script>
 </body>
 </html>
+"
