@@ -65,9 +65,22 @@
         
         .question-item {
             background: transparent;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
             border: none;
-            padding: 0;
+            padding: 20px 0;
+            position: relative;
+        }
+        
+        .question-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #f0a6c4, transparent);
+            border-radius: 2px;
         }
         
         .question-header {
@@ -89,12 +102,13 @@
         
         .question-content {
             font-size: 16px;
-            line-height: 1.5;
+            line-height: 1.6;
             color: #333;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             white-space: pre-line;
             border-left: 4px solid #ddd;
             padding-left: 15px;
+            min-height: 40px;
         }
         
         /* Answer section */
@@ -127,11 +141,12 @@
         
         .answer-content {
             font-size: 16px;
-            line-height: 1.5;
+            line-height: 1.6;
             color: #333;
             white-space: pre-line;
             border-left: 4px solid #333;
             padding-left: 15px;
+            min-height: 40px;
         }
         
         /* Status messages */
