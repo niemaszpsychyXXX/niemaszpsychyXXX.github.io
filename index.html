@@ -609,35 +609,20 @@
         let currentUserId = null;
         let isAdmin = false;
         let adminAuthenticated = false;
-
-        async function loadAdminPassword() {
-            try {
-                const response = await fetch('secrets.json');
-                if (!response.ok) {
-                    throw new Error('Nie można załadować pliku secrets.json');
-                }
-                const data = await response.json();
-                return data.admin_password;
-            } catch (error) {
-                console.error('Błąd ładowania hasła:', error);
-                // Fallback password if secrets.json can't be loaded
-                return 'admin123';
-            }
-        }
+        const ADMIN_PASSWORD = "adminpass"; // Simple password for now
 
         // Check admin password
-        async function checkAdminPassword() {
+        function checkAdminPassword() {
             const passwordInput = document.getElementById('adminPassword').value;
-            const correctPassword = await loadAdminPassword();
             const errorDiv = document.getElementById('loginError');
             
-            if (passwordInput === correctPassword) {
+            if (passwordInput === ADMIN_PASSWORD) {
                 adminAuthenticated = true;
                 document.getElementById('loginOverlay').classList.add('hidden');
                 document.getElementById('mainContent').classList.remove('blurred');
                 
-                // Now show admin interface
-                showAdminInterface();
+                // Now initialize the app
+                initApp();
             } else {
                 errorDiv.textContent = 'Nieprawidłowe hasło';
             }
@@ -651,8 +636,16 @@
             }
         }
 
-         // Modify showAdminInterface to check authentication
+        // Modify showAdminInterface to check authentication
         function showAdminInterface() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user');
+            
+            // If we're coming from a user link, don't show login
+            if (userId) {
+                return;
+            }
+            
             if (!adminAuthenticated) {
                 document.getElementById('loginOverlay').classList.remove('hidden');
                 document.getElementById('mainContent').classList.add('blurred');
@@ -730,9 +723,16 @@
                 }
             }
             
-            // If no valid user ID, show login overlay for admin access
-            document.getElementById('loginOverlay').classList.remove('hidden');
-            document.getElementById('mainContent').classList.add('blurred');
+            // If no valid user ID, show admin interface if authenticated
+            if (adminAuthenticated) {
+                showAdminInterface();
+            } else {
+                // Show login overlay only if not coming from a user link
+                if (!userId) {
+                    document.getElementById('loginOverlay').classList.remove('hidden');
+                    document.getElementById('mainContent').classList.add('blurred');
+                }
+            }
         }
 
         // Save data to Firebase
@@ -958,20 +958,6 @@
             
             // Update URL without reloading
             const newUrl = window.location.href.split('?')[0] + '?user=' + userId;
-            window.history.pushState({ path: newUrl }, '', newUrl);
-        }
-        
-        // Show admin interface
-        function showAdminInterface() {
-            isAdmin = true;
-            document.getElementById('adminAccessBtn').classList.add('hidden');
-            
-            document.getElementById('admin-section').classList.remove('hidden');
-            document.getElementById('user-section').classList.add('hidden');
-            currentUserId = null;
-            
-            // Update URL without reloading
-            const newUrl = window.location.href.split('?')[0];
             window.history.pushState({ path: newUrl }, '', newUrl);
         }
         
