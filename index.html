@@ -391,7 +391,6 @@
             font-size: 14px;
         }
 
-        /* New styles for answers */
         .answer-section {
             margin-top: 15px;
             padding-top: 15px;
@@ -492,17 +491,9 @@
             margin-top: 10px;
             font-size: 14px;
         }
-        
-        .blurred {
-            filter: blur(5px);
-            pointer-events: none;
-            user-select: none;
-        }
-        
     </style>
 </head>
 <body>
-     <!-- Add login overlay at the beginning of body -->
     <div id="loginOverlay" class="login-overlay hidden">
         <div class="login-container">
             <h2>Logowanie Administratora</h2>
@@ -512,168 +503,134 @@
         </div>
     </div>
 
-     <div id="mainContent">
-    <div class="auto-save-indicator" id="saveIndicator">Zapisano automatycznie</div>
-    
-    <div class="container">
-        <!-- Interfejs Administratora -->
-        <div id="admin-section" class="hidden">
-            <h1>Anonimowe Pytania - Administrator</h1>
+    <div id="mainContent">
+        <div class="auto-save-indicator" id="saveIndicator">Zapisano automatycznie</div>
         
+        <div class="container">
+            <div id="admin-section" class="hidden">
+                <h1>Anonimowe Pytania - Administrator</h1>
             
-            <div class="section">
-                <h2>Zarządzanie Wiadomościami</h2>
-                <button class="messages-btn" onclick="window.open('/messages.html', '_blank')">Przejdź do Strony Wiadomości</button>
-                <p style="margin-top: 10px;">Adres strony wiadomości: <code>https://yourdomain.com/messages.html</code></p>
-            </div>
-            
-            <div class="section">
-                <h2>Konfiguracja Firebase</h2>
-                <div class="firebase-config">
-                    <h3>
-                        <span class="status-indicator" id="statusIndicator"></span>
-                        Status połączenia z Firebase
-                    </h3>
-                    <input type="text" id="firebaseConfigApiKey" placeholder="API Key" value="AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM">
-                    <input type="text" id="firebaseConfigAuthDomain" placeholder="Auth Domain" value="nie-masz-psychy.firebaseapp.com">
-                    <input type="text" id="firebaseConfigProjectId" placeholder="Project ID" value="nie-masz-psychy">
-                    <input type="text" id="firebaseConfigStorageBucket" placeholder="Storage Bucket" value="nie-masz-psychy.firebasestorage.app">
-                    <input type="text" id="firebaseConfigMessagingSenderId" placeholder="Messaging Sender ID" value="381728790253">
-                    <input type="text" id="firebaseConfigAppId" placeholder="App ID" value="1:381728790253:web:a9b3a40ab52e28a11b5ee4">
-                    <div class="config-help">
-                        Dane konfiguracyjne są już wstępnie wypełnione
-                    </div>
-                    <br>
-                    <button class="save-btn" onclick="initFirebase()">Połącz z Firebase</button>
-                </div>
-            </div>
-            
-            <div class="section">
-                <h2>Dodaj Użytkowników</h2>
-                <div class="input-group">
-                    <input type="text" id="userNameInput" placeholder="Wpisz imię użytkownika">
-                    <button onclick="addUser()">Dodaj Użytkownika</button>
-                </div>
-                <div id="userList" class="user-list"></div>
-            </div>
-            
-            <div class="section">
-                <h2>Tiara Przydziału</h2>
-                <button onclick="generateAssignments()">Przydziel Ludziów</button>
-                <div id="assignmentsList"></div>
-            </div>
-        </div>
-        
-        <!-- Interfejs Użytkownika -->
-        <div id="user-section" class="hidden">
-            <div class="user-interface">
-                <div class="user-header">
-                    <h1 id="userWelcome">Witaj!</h1>
-                    <p id="userInfo">Twój interfejs anonimowych pytań</p>
+                <div class="section">
+                    <h2>Zarządzanie Wiadomościami</h2>
+                    <button class="messages-btn" onclick="window.open('/messages.html', '_blank')">Przejdź do Strony Wiadomości</button>
+                    <p style="margin-top: 10px;">Adres strony wiadomości: <code>https://yourdomain.com/messages.html</code></p>
                 </div>
                 
                 <div class="section">
-                    <h2>Wyślij Pytanie</h2>
-                    <p id="assignmentInfo"></p>
-                    <div class="input-group">
-                        <textarea id="questionInput" placeholder="Wpisz swoje anonimowe pytanie tutaj..."></textarea>
+                    <h2>Konfiguracja Firebase</h2>
+                    <div class="firebase-config">
+                        <h3>
+                            <span class="status-indicator" id="statusIndicator"></span>
+                            Status połączenia z Firebase
+                        </h3>
+                        <input type="text" id="firebaseConfigApiKey" placeholder="API Key" value="AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM">
+                        <input type="text" id="firebaseConfigAuthDomain" placeholder="Auth Domain" value="nie-masz-psychy.firebaseapp.com">
+                        <input type="text" id="firebaseConfigProjectId" placeholder="Project ID" value="nie-masz-psychy">
+                        <input type="text" id="firebaseConfigStorageBucket" placeholder="Storage Bucket" value="nie-masz-psychy.firebasestorage.app">
+                        <input type="text" id="firebaseConfigMessagingSenderId" placeholder="Messaging Sender ID" value="381728790253">
+                        <input type="text" id="firebaseConfigAppId" placeholder="App ID" value="1:381728790253:web:a9b3a40ab52e28a11b5ee4">
+                        <div class="config-help">
+                            Dane konfiguracyjne są już wstępnie wypełnione
+                        </div>
+                        <br>
+                        <button class="save-btn" onclick="initFirebase()">Połącz z Firebase</button>
                     </div>
-                    <button onclick="sendQuestion()">Wyślij Pytanie</button>
-                    <div id="questionMessage"></div>
                 </div>
                 
-                <div class="questions-section">
-                    <h2>Pytania dla Ciebie</h2>
-                    <div id="receivedQuestions">
-                        <p style="text-align: center; color: #666;">Brak pytań.</p>
+                <div class="section">
+                    <h2>Dodaj Użytkowników</h2>
+                    <div class="input-group">
+                        <input type="text" id="userNameInput" placeholder="Wpisz imię użytkownika">
+                        <button onclick="addUser()">Dodaj Użytkownika</button>
+                    </div>
+                    <div id="userList" class="user-list"></div>
+                </div>
+                
+                <div class="section">
+                    <h2>Tiara Przydziału</h2>
+                    <button onclick="generateAssignments()">Przydziel Ludziów</button>
+                    <div id="assignmentsList"></div>
+                </div>
+            </div>
+            
+            <div id="user-section" class="hidden">
+                <div class="user-interface">
+                    <div class="user-header">
+                        <h1 id="userWelcome">Witaj!</h1>
+                        <p id="userInfo">Twój interfejs anonimowych pytań</p>
+                    </div>
+                    
+                    <div class="section">
+                        <h2>Wyślij Pytanie</h2>
+                        <p id="assignmentInfo"></p>
+                        <div class="input-group">
+                            <textarea id="questionInput" placeholder="Wpisz swoje anonimowe pytanie tutaj..."></textarea>
+                        </div>
+                        <button onclick="sendQuestion()">Wyślij Pytanie</button>
+                        <div id="questionMessage"></div>
+                    </div>
+                    
+                    <div class="questions-section">
+                        <h2>Pytania dla Ciebie</h2>
+                        <div id="receivedQuestions">
+                            <p style="text-align: center; color: #666;">Brak pytań.</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-     </div>
 
     <button id="adminAccessBtn" class="admin-access-btn hidden" onclick="showAdminInterface()">Panel Admina</button>
 
-    <!-- Load Firebase SDK first -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
-        // Global variables accessible by all scripts
+        // Global variables
         let app = null;
         let db = null;
         let users = [];
         let assignments = {};
         let questions = {};
         let currentUserId = null;
-        let isAdmin = false;
         let adminAuthenticated = false;
-
-        async function loadAdminPassword() {
-            try {
-                const response = await fetch('secrets.json');
-                if (!response.ok) {
-                    throw new Error('Nie można załadować pliku secrets.json');
-                }
-                const data = await response.json();
-                return data.admin_password;
-            } catch (error) {
-                console.error('Błąd ładowania hasła:', error);
-                // Fallback password if secrets.json can't be loaded
-                return 'admin123';
-            }
-        }
+        const ADMIN_PASSWORD = "admin123"; // Default password, replace with your own
 
         // Check admin password
         async function checkAdminPassword() {
             const passwordInput = document.getElementById('adminPassword').value;
-            const correctPassword = await loadAdminPassword();
             const errorDiv = document.getElementById('loginError');
             
-            if (passwordInput === correctPassword) {
+            if (passwordInput === ADMIN_PASSWORD) {
                 adminAuthenticated = true;
                 document.getElementById('loginOverlay').classList.add('hidden');
-                
-                // Now initialize the app
-                initApp();
+                showAdminInterfaceAfterLogin();
             } else {
                 errorDiv.textContent = 'Nieprawidłowe hasło';
             }
         }
 
-        // Initialize application after successful login
-        async function initApp() {
-            const success = await initFirebase();
-            if (!success) {
-                showAdminInterface();
-            }
-        }
-
-         // Modify showAdminInterface to check authentication
-        function showAdminInterface() {
-            // Only show login if we're not already viewing a user page
-            const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('user');
-            
-            if (!userId && !adminAuthenticated) {
-                document.getElementById('loginOverlay').classList.remove('hidden');
-                return;
-            }
-            
-            isAdmin = true;
+        // Show admin interface after successful login
+        function showAdminInterfaceAfterLogin() {
             document.getElementById('adminAccessBtn').classList.add('hidden');
-            
             document.getElementById('admin-section').classList.remove('hidden');
             document.getElementById('user-section').classList.add('hidden');
             currentUserId = null;
             
-            // Update URL without reloading
             const newUrl = window.location.href.split('?')[0];
             window.history.pushState({ path: newUrl }, '', newUrl);
         }
 
-        
+        // Show admin login interface
+        function showAdminInterface() {
+            if (!adminAuthenticated) {
+                document.getElementById('loginOverlay').classList.remove('hidden');
+                return;
+            }
+            showAdminInterfaceAfterLogin();
+        }
+
         // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM",
@@ -687,12 +644,10 @@
         // Initialize Firebase
         window.initFirebase = async function() {
             try {
-                // Initialize Firebase
                 app = firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
                 updateConnectionStatus();
                 
-                // Listen for database changes
                 const dbRef = firebase.database().ref('/');
                 dbRef.on('value', (snapshot) => {
                     const data = snapshot.val() || {};
@@ -722,7 +677,6 @@
             const userId = urlParams.get('user');
             
             if (userId) {
-                // Check if user exists in database
                 const userExists = users.some(u => u.id === userId);
                 if (userExists) {
                     openUserInterface(userId);
@@ -732,8 +686,11 @@
                 }
             }
             
-            // If no valid user ID, show admin interface
-            showAdminInterface();
+            if (adminAuthenticated) {
+                showAdminInterfaceAfterLogin();
+            } else {
+                document.getElementById('adminAccessBtn').classList.remove('hidden');
+            }
         }
 
         // Save data to Firebase
@@ -929,8 +886,6 @@
         
         // Open user interface
         function openUserInterface(userId) {
-            isAdmin = false;
-            // Hide admin access button for regular users
             document.getElementById('adminAccessBtn').classList.add('hidden');
             
             currentUserId = userId;
@@ -957,7 +912,6 @@
             document.getElementById('admin-section').classList.add('hidden');
             document.getElementById('user-section').classList.remove('hidden');
             
-            // Update URL without reloading
             const newUrl = window.location.href.split('?')[0] + '?user=' + userId;
             window.history.pushState({ path: newUrl }, '', newUrl);
         }
@@ -1066,7 +1020,7 @@
             questions[currentUserId][questionIndex].answer = {
                 text: answerText,
                 timestamp: new Date().toLocaleString(),
-                secret: isSecret  // Add the secret flag to the answer
+                secret: isSecret
             };
             
             saveDataToFirebase();
@@ -1080,20 +1034,17 @@
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
-            // First check if we're accessing a user page directly
             const urlParams = new URLSearchParams(window.location.search);
             const userId = urlParams.get('user');
             
             if (userId) {
-                // If we're accessing a user page directly, don't show login
                 initFirebase().then((success) => {
                     if (!success) {
                         showAdminInterface();
                     }
                 });
             } else {
-                // If we're not accessing a user page, show login by default
-                document.getElementById('loginOverlay').classList.remove('hidden');
+                document.getElementById('adminAccessBtn').classList.remove('hidden');
             }
         });
     </script>
