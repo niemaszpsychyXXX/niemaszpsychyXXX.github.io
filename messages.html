@@ -161,6 +161,7 @@
         }
         
         .success-message {
+            background: rgba(46, 213, 115, 0.1);
             color: #2ed573;
             border: 1px solid rgba(46, 213, 115, 0.3);
         }
@@ -337,8 +338,18 @@
                 const userQuestions = questionsData[userId] || [];
                 
                 userQuestions.forEach(question => {
+                    // Skip questions without answers
+                    if (!question.answer) {
+                        return;
+                    }
+                    
                     // Skip questions with secret answers
-                    if (question.answer && question.answer.secret) {
+                    if (question.answer.secret) {
+                        return;
+                    }
+                    
+                    // Skip questions with empty answer text
+                    if (!question.answer.text || question.answer.text.trim() === '') {
                         return;
                     }
                     
@@ -355,6 +366,12 @@
                     });
                 });
             });
+            
+            // Check if there are any questions to display
+            if (Object.keys(questionsByAsker).length === 0) {
+                questionsList.innerHTML = '<p style="text-align: center; color: #666;">Brak odpowiedzianych pytań.</p>';
+                return;
+            }
             
             // Display questions grouped by asker
             Object.keys(questionsByAsker).forEach(askerId => {
@@ -385,20 +402,18 @@
                     const questionItem = document.createElement('div');
                     questionItem.className = 'question-item';
                     
-                    let answerHtml = '';
-                    if (question.answer) {
-                        answerHtml = `
-                            <div class="answer-section">
-                                <div class="answer-item">
-                                    <div class="answer-header">
-                                        <span class="answer-author">${question.askedToName}</span>
-                                        <span class="answer-time">${question.answer.timestamp || 'Brak daty'}</span>
-                                    </div>
-                                    <div class="answer-content">${question.answer.text || 'Brak odpowiedzi'}</div>
+                    // Since we already filtered out unanswered questions, we know there's an answer
+                    const answerHtml = `
+                        <div class="answer-section">
+                            <div class="answer-item">
+                                <div class="answer-header">
+                                    <span class="answer-author">${question.askedToName}</span>
+                                    <span class="answer-time">${question.answer.timestamp || 'Brak daty'}</span>
                                 </div>
+                                <div class="answer-content">${question.answer.text}</div>
                             </div>
-                        `;
-                    }
+                        </div>
+                    `;
                     
                     questionItem.innerHTML = `
                         <div class="question-header">
