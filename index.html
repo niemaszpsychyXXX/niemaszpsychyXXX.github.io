@@ -509,7 +509,7 @@
     
     <div class="container">
         <!-- Interfejs Administratora -->
-        <div id="admin-section" class="hidden">
+        <div id="admin-section">
             <h1>Anonimowe Pytania - Administrator</h1>
         
             
@@ -557,7 +557,7 @@
         </div>
         
         <!-- Interfejs Użytkownika -->
-        <div id="user-section" class="hidden">
+        <div id="user-section">
             <div class="user-interface">
                 <div class="user-header">
                     <h1 id="userWelcome">Witaj!</h1>
@@ -584,8 +584,6 @@
         </div>
     </div>
      </div>
-
-    <button id="adminAccessBtn" class="admin-access-btn hidden" onclick="showAdminInterface()">Panel Admina</button>
 
     <!-- Load Firebase SDK first -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -627,11 +625,7 @@
             
             // Only show admin interface if authenticated
             
-                isAdmin = true;
-                document.getElementById('adminAccessBtn').classList.add('hidden');
                 
-                document.getElementById('admin-section').classList.remove('hidden');
-                document.getElementById('user-section').classList.add('hidden');
                 currentUserId = null;
                 
                 // Update URL without reloading
@@ -880,7 +874,6 @@
         function openUserInterface(userId) {
             isAdmin = false;
             // Hide admin access button for regular users
-            document.getElementById('adminAccessBtn').classList.add('hidden');
             
             currentUserId = userId;
             const user = users.find(u => u.id === userId);
