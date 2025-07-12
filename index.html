@@ -558,8 +558,8 @@
             </div>
             
             <div class="section">
-                <h2>Generuj Przydziały</h2>
-                <button onclick="generateAssignments()">Generuj Losowe Przydziały</button>
+                <h2>Tiara Przydziału</h2>
+                <button onclick="generateAssignments()">Przydziel Ludziów</button>
                 <div id="assignmentsList"></div>
             </div>
         </div>
@@ -608,6 +608,7 @@
         let questions = {};
         let currentUserId = null;
         let isAdmin = false;
+        let adminAuthenticated = false;
 
         async function loadAdminPassword() {
             try {
@@ -1032,6 +1033,7 @@
                     answerSection = `
                         <div class="answer-section">
                             <div class="answer-text">${question.answer.text}</div>
+                            ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>' : ''}
                             <div class="answer-time">Odpowiedź: ${question.answer.timestamp}</div>
                         </div>
                     `;
@@ -1039,6 +1041,10 @@
                     answerSection = `
                         <div class="answer-form">
                             <textarea class="answer-textarea" id="answer-${index}" placeholder="Napisz odpowiedź..."></textarea>
+                            <div style="margin-bottom: 5px;">
+                                <input type="checkbox" id="secret-${index}">
+                                <label for="secret-${index}">Odpowiedz bezpośrednio</label>
+                            </div>
                             <button class="answer-btn" onclick="sendAnswer(${index})">Wyślij odpowiedź</button>
                         </div>
                     `;
@@ -1057,6 +1063,7 @@
         function sendAnswer(questionIndex) {
             const answerTextarea = document.getElementById(`answer-${questionIndex}`);
             const answerText = answerTextarea.value.trim();
+            const isSecret = document.getElementById(`secret-${questionIndex}`).checked;
             
             if (!answerText) {
                 alert('Proszę wpisać odpowiedź');
@@ -1070,7 +1077,8 @@
             
             questions[currentUserId][questionIndex].answer = {
                 text: answerText,
-                timestamp: new Date().toLocaleString()
+                timestamp: new Date().toLocaleString(),
+                secret: isSecret  // Add the secret flag to the answer
             };
             
             saveDataToFirebase();
