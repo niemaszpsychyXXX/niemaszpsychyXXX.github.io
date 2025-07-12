@@ -439,6 +439,24 @@
     </style>
 </head>
 <body>
+    <script>
+    // Check if user is logged in or if this is a user page
+    const urlParams = new URLSearchParams(window.location.search);
+    const isUserPage = urlParams.has('user');
+    
+    if (!isUserPage) {
+        // Check login status
+        const loginExpiry = localStorage.getItem('adminLoggedIn');
+        const currentTime = new Date().getTime();
+        
+        if (!loginExpiry || currentTime > parseInt(loginExpiry)) {
+            // Not logged in or session expired - redirect to login
+            localStorage.removeItem('adminLoggedIn');
+            window.location.href = 'index.html';
+        }
+    }
+</script>
+    
     <div class="auto-save-indicator" id="saveIndicator">Zapisano automatycznie</div>
     
     <div class="container">
