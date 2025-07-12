@@ -190,11 +190,6 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
-        
-        .secret-answer {
-            font-style: italic;
-            color: #888;
-        }
     </style>
 </head>
 <body>
@@ -318,6 +313,11 @@
                 });
                 
                 userQuestions.forEach(question => {
+                    // Skip questions with secret answers
+                    if (question.answer && question.answer.secret) {
+                        return;
+                    }
+                    
                     const questionItem = document.createElement('div');
                     questionItem.className = 'question-item';
                     
@@ -325,25 +325,17 @@
                     
                     let answerHtml = '';
                     if (question.answer) {
-                        if (question.answer.secret) {
-                            answerHtml = `
-                                <div class="answer-section">
-                                    <div class="secret-answer">Odpowiedź jest prywatna i nie jest wyświetlana publicznie</div>
-                                </div>
-                            `;
-                        } else {
-                            answerHtml = `
-                                <div class="answer-section">
-                                    <div class="answer-item">
-                                        <div class="answer-header">
-                                            <span class="answer-author">${userName}</span>
-                                            <span class="answer-time">${question.answer.timestamp || 'Brak daty'}</span>
-                                        </div>
-                                        <div class="answer-content">${question.answer.text || 'Brak odpowiedzi'}</div>
+                        answerHtml = `
+                            <div class="answer-section">
+                                <div class="answer-item">
+                                    <div class="answer-header">
+                                        <span class="answer-author">${userName}</span>
+                                        <span class="answer-time">${question.answer.timestamp || 'Brak daty'}</span>
                                     </div>
+                                    <div class="answer-content">${question.answer.text || 'Brak odpowiedzi'}</div>
                                 </div>
-                            `;
-                        }
+                            </div>
+                        `;
                     }
                     
                     questionItem.innerHTML = `
@@ -358,7 +350,10 @@
                     userSection.appendChild(questionItem);
                 });
                 
-                questionsList.appendChild(userSection);
+                // Only add user section if there are visible questions
+                if (userSection.children.length > 1) { // More than just the header
+                    questionsList.appendChild(userSection);
+                }
             });
         }
         
