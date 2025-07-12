@@ -503,7 +503,7 @@
 </head>
 <body>
      <!-- Add login overlay at the beginning of body -->
-    <div id="loginOverlay" class="login-overlay">
+    <div id="loginOverlay" class="login-overlay hidden">
         <div class="login-container">
             <h2>Logowanie Administratora</h2>
             <input type="password" id="adminPassword" class="login-input" placeholder="Wpisz hasło administratora">
@@ -512,7 +512,7 @@
         </div>
     </div>
 
-     <div id="mainContent" class="blurred">
+     <div id="mainContent">
     <div class="auto-save-indicator" id="saveIndicator">Zapisano automatycznie</div>
     
     <div class="container">
@@ -633,8 +633,7 @@
             
             if (passwordInput === correctPassword) {
                 adminAuthenticated = true;
-                document.getElementById('loginOverlay').style.display = 'none';
-                document.getElementById('mainContent').classList.remove('blurred');
+                document.getElementById('loginOverlay').classList.add('hidden');
                 
                 // Now initialize the app
                 initApp();
@@ -653,9 +652,12 @@
 
          // Modify showAdminInterface to check authentication
         function showAdminInterface() {
-            if (!adminAuthenticated) {
-                document.getElementById('loginOverlay').style.display = 'flex';
-                document.getElementById('mainContent').classList.add('blurred');
+            // Only show login if we're not already viewing a user page
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user');
+            
+            if (!userId && !adminAuthenticated) {
+                document.getElementById('loginOverlay').classList.remove('hidden');
                 return;
             }
             
@@ -960,20 +962,6 @@
             window.history.pushState({ path: newUrl }, '', newUrl);
         }
         
-        // Show admin interface
-        function showAdminInterface() {
-            isAdmin = true;
-            document.getElementById('adminAccessBtn').classList.add('hidden');
-            
-            document.getElementById('admin-section').classList.remove('hidden');
-            document.getElementById('user-section').classList.add('hidden');
-            currentUserId = null;
-            
-            // Update URL without reloading
-            const newUrl = window.location.href.split('?')[0];
-            window.history.pushState({ path: newUrl }, '', newUrl);
-        }
-        
         // Send question
         function sendQuestion() {
             const questionInput = document.getElementById('questionInput');
@@ -1092,11 +1080,21 @@
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
-            initFirebase().then((success) => {
-                if (!success) {
-                    showAdminInterface();
-                }
-            });
+            // First check if we're accessing a user page directly
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user');
+            
+            if (userId) {
+                // If we're accessing a user page directly, don't show login
+                initFirebase().then((success) => {
+                    if (!success) {
+                        showAdminInterface();
+                    }
+                });
+            } else {
+                // If we're not accessing a user page, show login by default
+                document.getElementById('loginOverlay').classList.remove('hidden');
+            }
         });
     </script>
 </body>
