@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logowanie</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+        
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        #error-message {
+            color: #ff4757;
+            margin-top: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Logowanie do Panelu Admina</h1>
+        <input type="password" id="password" placeholder="Wprowadź hasło">
+        <button onclick="checkPassword()">Zaloguj</button>
+        <div id="error-message">Nieprawidłowe hasło</div>
+    </div>
+
+    <script>
+        // Password defined in this file (not secure but works for GitHub Pages)
+        const ADMIN_PASSWORD = "your_password_here"; // Change this to your desired password
+        
+        function checkPassword() {
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('error-message');
+            
+            if (password === ADMIN_PASSWORD) {
+                // Store login state in localStorage (expires after 1 hour)
+                const loginExpiry = new Date().getTime() + (60 * 60 * 1000); // 1 hour from now
+                localStorage.setItem('adminLoggedIn', loginExpiry);
+                window.location.href = 'admin.html';
+            } else {
+                errorMessage.style.display = 'block';
+            }
+        }
+        
+        // Allow pressing Enter to submit
+        document.getElementById('password').addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                checkPassword();
+            }
+        });
+    </script>
+</body>
+</html>
