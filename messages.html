@@ -190,6 +190,11 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+        
+        .secret-answer {
+            font-style: italic;
+            color: #888;
+        }
     </style>
 </head>
 <body>
@@ -320,17 +325,25 @@
                     
                     let answerHtml = '';
                     if (question.answer) {
-                        answerHtml = `
-                            <div class="answer-section">
-                                <div class="answer-item">
-                                    <div class="answer-header">
-                                        <span class="answer-author">${userName}</span>
-                                        <span class="answer-time">${question.answer.timestamp || 'Brak daty'}</span>
-                                    </div>
-                                    <div class="answer-content">${question.answer.text || 'Brak odpowiedzi'}</div>
+                        if (question.answer.secret) {
+                            answerHtml = `
+                                <div class="answer-section">
+                                    <div class="secret-answer">Odpowiedź jest prywatna i nie jest wyświetlana publicznie</div>
                                 </div>
-                            </div>
-                        `;
+                            `;
+                        } else {
+                            answerHtml = `
+                                <div class="answer-section">
+                                    <div class="answer-item">
+                                        <div class="answer-header">
+                                            <span class="answer-author">${userName}</span>
+                                            <span class="answer-time">${question.answer.timestamp || 'Brak daty'}</span>
+                                        </div>
+                                        <div class="answer-content">${question.answer.text || 'Brak odpowiedzi'}</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
                     }
                     
                     questionItem.innerHTML = `
