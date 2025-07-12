@@ -3,99 +3,411 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logowanie</title>
+    <title>Pytania i Odpowiedzi</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        * {
             margin: 0;
-            padding: 20px;
+            padding: 0;
+            box-sizing: border-box;
         }
         
-        .login-container {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            padding: 30px;
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Open Sans', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #ffeaf4 0%, #f8c2d4 50%, #f0a6c4 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
         }
         
         h1 {
-            color: #333;
+            text-align: center;
+            color: #b83280;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+        
+        .user-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
             margin-bottom: 30px;
-            font-weight: 300;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
         }
         
-        input[type="password"] {
-            width: 100%;
-            padding: 12px 15px;
-            margin-bottom: 20px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
+        .user-section h2 {
+            color: #b83280;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
         }
         
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #000;
             color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .question-item {
+            background: transparent;
+            margin-bottom: 20px;
             border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
+            padding: 0;
+        }
+        
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #888;
+        }
+        
+        .question-author {
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .question-time {
+            color: #aaa;
+        }
+        
+        .question-content {
             font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            width: 100%;
+            line-height: 1.5;
+            color: #333;
+            margin-bottom: 15px;
+            white-space: pre-line;
+            border-left: 4px solid #ddd;
+            padding-left: 15px;
         }
         
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-        }
-        
-        #error-message {
-            color: #ff4757;
+        /* Answer section */
+        .answer-section {
             margin-top: 15px;
-            display: none;
+            padding-top: 0;
+            border-top: none;
+        }
+        
+        .answer-item {
+            border-radius: 0;
+            margin-bottom: 0;
+        }
+        
+        .answer-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .answer-author {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .answer-time {
+            color: #aaa;
+        }
+        
+        .answer-content {
+            font-size: 16px;
+            line-height: 1.5;
+            color: #333;
+            white-space: pre-line;
+            border-left: 4px solid #333;
+            padding-left: 15px;
+        }
+        
+        /* Status messages */
+        .status-message {
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9);
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .success-message {
+            background: rgba(46, 213, 115, 0.1);
+            color: #2ed573;
+            border: 1px solid rgba(46, 213, 115, 0.3);
+        }
+        
+        .error-message {
+            background: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+            border: 1px solid rgba(255, 71, 87, 0.3);
+        }
+        
+        .status-loading {
+            background: rgba(255, 193, 7, 0.1);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected {
+            background: #28a745;
+        }
+
+        .status-disconnected {
+            background: #dc3545;
+        }
+
+        .status-loading {
+            background: #ffc107;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+                margin-bottom: 30px;
+            }
+            
+            .user-section {
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .user-section h2 {
+                font-size: 1.5em;
+            }
+            
+            .user-avatar {
+                width: 40px;
+                height: 40px;
+                font-size: 1em;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <h1>Logowanie do Panelu Admina</h1>
-        <input type="password" id="password" placeholder="Wprowadź hasło">
-        <button onclick="checkPassword()">Zaloguj</button>
-        <div id="error-message">Nieprawidłowe hasło</div>
+    <div class="container">
+        <h1>Pytania i odpowiedzi</h1>
+        
+        <div class="section">
+            <div id="connectionStatus" class="status-message status-loading">
+                <span class="status-indicator status-loading"></span>
+                Łączenie z bazą danych...
+            </div>
+            <div id="questionsList">
+                <p style="text-align: center; color: #666;">Ładowanie pytań...</p>
+            </div>
+        </div>
     </div>
 
+    <!-- Load Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
     <script>
-        // Password defined in this file (not secure but works for GitHub Pages)
-        const ADMIN_PASSWORD = "your_password_here"; // Change this to your desired password
-        
-        function checkPassword() {
-            const password = document.getElementById('password').value;
-            const errorMessage = document.getElementById('error-message');
-            
-            if (password === ADMIN_PASSWORD) {
-                // Store login state in localStorage (expires after 1 hour)
-                const loginExpiry = new Date().getTime() + (60 * 60 * 1000); // 1 hour from now
-                localStorage.setItem('adminLoggedIn', loginExpiry);
-                window.location.href = 'admin.html';
-            } else {
-                errorMessage.style.display = 'block';
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM",
+            authDomain: "nie-masz-psychy.firebaseapp.com",
+            databaseURL: "https://nie-masz-psychy-default-rtdb.firebaseio.com",
+            projectId: "nie-masz-psychy",
+            storageBucket: "nie-masz-psychy.appspot.com",
+            messagingSenderId: "381728790253",
+            appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
+        };
+
+        // Initialize Firebase
+        let app = null;
+        let db = null;
+        let questionsRef = null;
+        let usersRef = null;
+        let usersData = {};
+
+        function initFirebase() {
+            try {
+                app = firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                questionsRef = db.ref('questions');
+                usersRef = db.ref('users');
+                
+                // Add connection state listener
+                const connectedRef = db.ref(".info/connected");
+                connectedRef.on("value", function(snap) {
+                    const statusDiv = document.getElementById('connectionStatus');
+                    if (snap.val() === true) {
+                        statusDiv.innerHTML = '<span class="status-indicator status-connected"></span> Połączono z bazą danych';
+                        statusDiv.className = "status-message success-message";
+                    } else {
+                        statusDiv.innerHTML = '<span class="status-indicator status-disconnected"></span> Brak połączenia z bazą danych';
+                        statusDiv.className = "status-message error-message";
+                    }
+                });
+
+                // First load users
+                usersRef.once('value').then((snapshot) => {
+                    const users = snapshot.val() || [];
+                    users.forEach(user => {
+                        usersData[user.id] = user.name;
+                    });
+                    
+                    // Then load questions
+                    questionsRef.on('value', (snapshot) => {
+                        const questionsData = snapshot.val() || {};
+                        displayQuestionsFromFirebase(questionsData);
+                    }, (error) => {
+                        console.error("Firebase read failed:", error);
+                        document.getElementById('connectionStatus').innerHTML = 
+                            '<span class="status-indicator status-disconnected"></span> Błąd odczytu danych: ' + error.message;
+                        document.getElementById('connectionStatus').className = "status-message error-message";
+                    });
+                });
+                
+                return true;
+            } catch (error) {
+                console.error('Błąd inicjalizacji Firebase:', error);
+                document.getElementById('connectionStatus').innerHTML = 
+                    '<span class="status-indicator status-disconnected"></span> Błąd inicjalizacji Firebase: ' + error.message;
+                document.getElementById('connectionStatus').className = "status-message error-message";
+                return false;
             }
         }
-        
-        // Allow pressing Enter to submit
-        document.getElementById('password').addEventListener('keyup', function(event) {
-            if (event.key === 'Enter') {
-                checkPassword();
+
+        // Display questions from Firebase
+        function displayQuestionsFromFirebase(questionsData) {
+            const questionsList = document.getElementById('questionsList');
+            
+            if (!questionsData || Object.keys(questionsData).length === 0) {
+                questionsList.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań w bazie danych.</p>';
+                return;
             }
+            
+            questionsList.innerHTML = '';
+            
+            // Group questions by who asked them (question.from)
+            const questionsByAsker = {};
+            
+            // Process all questions and group by asker
+            Object.keys(questionsData).forEach(userId => {
+                const userQuestions = questionsData[userId] || [];
+                
+                userQuestions.forEach(question => {
+                    // Skip questions with secret answers
+                    if (question.answer && question.answer.secret) {
+                        return;
+                    }
+                    
+                    const askerId = question.from;
+                    if (!questionsByAsker[askerId]) {
+                        questionsByAsker[askerId] = [];
+                    }
+                    
+                    // Add the question with info about who it was asked to
+                    questionsByAsker[askerId].push({
+                        ...question,
+                        askedTo: userId,
+                        askedToName: usersData[userId] || `Użytkownik (${userId.substring(0, 6)}...)`
+                    });
+                });
+            });
+            
+            // Display questions grouped by asker
+            Object.keys(questionsByAsker).forEach(askerId => {
+                const askerName = usersData[askerId] || `Użytkownik (${askerId.substring(0, 6)}...)`;
+                const askerQuestions = questionsByAsker[askerId];
+                
+                if (askerQuestions.length === 0) return;
+                
+                const userSection = document.createElement('div');
+                userSection.className = 'user-section';
+                
+                const userHeader = document.createElement('h2');
+                userHeader.innerHTML = `
+                    <div class="user-avatar">${askerName.charAt(0).toUpperCase()}</div>
+                    ${askerName}
+                `;
+                
+                userSection.appendChild(userHeader);
+                
+                // Sort questions by timestamp (newest first)
+                askerQuestions.sort((a, b) => {
+                    const timeA = a.timestamp ? new Date(a.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
+                    const timeB = b.timestamp ? new Date(b.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
+                    return timeB - timeA;
+                });
+                
+                askerQuestions.forEach(question => {
+                    const questionItem = document.createElement('div');
+                    questionItem.className = 'question-item';
+                    
+                    let answerHtml = '';
+                    if (question.answer) {
+                        answerHtml = `
+                            <div class="answer-section">
+                                <div class="answer-item">
+                                    <div class="answer-header">
+                                        <span class="answer-author">${question.askedToName}</span>
+                                        <span class="answer-time">${question.answer.timestamp || 'Brak daty'}</span>
+                                    </div>
+                                    <div class="answer-content">${question.answer.text || 'Brak odpowiedzi'}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    questionItem.innerHTML = `
+                        <div class="question-header">
+                            <span class="question-author">Do: ${question.askedToName}</span>
+                            <span class="question-time">${question.timestamp || 'Brak daty'}</span>
+                        </div>
+                        <div class="question-content">${question.text || 'Brak treści pytania'}</div>
+                        ${answerHtml}
+                    `;
+                    
+                    userSection.appendChild(questionItem);
+                });
+                
+                // Only add user section if there are visible questions
+                if (userSection.children.length > 1) { // More than just the header
+                    questionsList.appendChild(userSection);
+                }
+            });
+        }
+        
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            initFirebase();
         });
     </script>
 </body>
