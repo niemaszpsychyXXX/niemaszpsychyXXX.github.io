@@ -613,56 +613,65 @@
 
         // Check admin password
         function checkAdminPassword() {
-            const passwordInput = document.getElementById('adminPassword').value;
-            const errorDiv = document.getElementById('loginError');
-            
-            if (passwordInput === ADMIN_PASSWORD) {
-                adminAuthenticated = true;
-                document.getElementById('loginOverlay').classList.add('hidden');
-                document.getElementById('mainContent').classList.remove('blurred');
-                
-                // Now initialize the app
-                initApp();
-            } else {
-                errorDiv.textContent = 'Nieprawidłowe hasło';
-            }
-        }
+    const passwordInput = document.getElementById('adminPassword').value;
+    const errorDiv = document.getElementById('loginError');
+    
+    if (passwordInput === ADMIN_PASSWORD) {
+        adminAuthenticated = true;
+        // Hide login overlay
+        document.getElementById('loginOverlay').classList.add('hidden');
+        document.getElementById('mainContent').classList.remove('blurred');
+        
+        // Clear password field and any error messages
+        document.getElementById('adminPassword').value = '';
+        errorDiv.textContent = '';
+        
+        // Now initialize the app and show admin interface
+        initApp();
+        showAdminInterface();
+    } else {
+        errorDiv.textContent = 'Nieprawidłowe hasło';
+    }
+}
 
         // Initialize application after successful login
         async function initApp() {
-            const success = await initFirebase();
-            if (!success) {
-                showAdminInterface();
-            }
-        }
+    const success = await initFirebase();
+    if (success) {
+        showAdminInterface();
+    } else {
+        showMessage('error', 'Błąd połączenia z Firebase');
+    }
+}
 
         // Modify showAdminInterface to check authentication
         function showAdminInterface() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('user');
-            
-            // If we're coming from a user link, don't show login
-            if (userId) {
-                return;
-            }
-            
-            if (!adminAuthenticated) {
-                document.getElementById('loginOverlay').classList.remove('hidden');
-                document.getElementById('mainContent').classList.add('blurred');
-                return;
-            }
-            
-            isAdmin = true;
-            document.getElementById('adminAccessBtn').classList.add('hidden');
-            
-            document.getElementById('admin-section').classList.remove('hidden');
-            document.getElementById('user-section').classList.add('hidden');
-            currentUserId = null;
-            
-            // Update URL without reloading
-            const newUrl = window.location.href.split('?')[0];
-            window.history.pushState({ path: newUrl }, '', newUrl);
-        }
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('user');
+    
+    // If we're coming from a user link, don't show admin interface
+    if (userId) {
+        return;
+    }
+    
+    // Only show admin interface if authenticated
+    if (adminAuthenticated) {
+        isAdmin = true;
+        document.getElementById('adminAccessBtn').classList.add('hidden');
+        
+        document.getElementById('admin-section').classList.remove('hidden');
+        document.getElementById('user-section').classList.add('hidden');
+        currentUserId = null;
+        
+        // Update URL without reloading
+        const newUrl = window.location.href.split('?')[0];
+        window.history.pushState({ path: newUrl }, '', newUrl);
+    } else {
+        // Show login overlay only if not authenticated
+        document.getElementById('loginOverlay').classList.remove('hidden');
+        document.getElementById('mainContent').classList.add('blurred');
+    }
+}
 
         
         // Firebase configuration
@@ -709,31 +718,31 @@
 
         // Check user access from URL
         function checkUserAccess() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('user');
-            
-            if (userId) {
-                // Check if user exists in database
-                const userExists = users.some(u => u.id === userId);
-                if (userExists) {
-                    openUserInterface(userId);
-                    return;
-                } else {
-                    showMessage('error', 'Użytkownik nie istnieje w bazie danych');
-                }
-            }
-            
-            // If no valid user ID, show admin interface if authenticated
-            if (adminAuthenticated) {
-                showAdminInterface();
-            } else {
-                // Show login overlay only if not coming from a user link
-                if (!userId) {
-                    document.getElementById('loginOverlay').classList.remove('hidden');
-                    document.getElementById('mainContent').classList.add('blurred');
-                }
-            }
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('user');
+    
+    if (userId) {
+        // Check if user exists in database
+        const userExists = users.some(u => u.id === userId);
+        if (userExists) {
+            openUserInterface(userId);
+            return;
+        } else {
+            showMessage('error', 'Użytkownik nie istnieje w bazie danych');
         }
+    }
+    
+    // If no valid user ID, show admin interface if authenticated
+    if (adminAuthenticated) {
+        showAdminInterface();
+    } else {
+        // Show login overlay only if not coming from a user link
+        if (!userId) {
+            document.getElementById('loginOverlay').classList.remove('hidden');
+            document.getElementById('mainContent').classList.add('blurred');
+        }
+    }
+}
 
         // Save data to Firebase
         window.saveDataToFirebase = async function() {
