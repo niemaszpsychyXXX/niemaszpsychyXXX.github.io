@@ -1,4 +1,3 @@
-Do not scroll page up when new answers appear. Add new answer on top but dont move scroll 
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -213,6 +212,7 @@ Do not scroll page up when new answers appear. Add new answer on top but dont mo
         let questionsRef = null;
         let usersRef = null;
         let usersData = {};
+        let lastDisplayedData = null;
 
         function initFirebase() {
             try {
@@ -264,19 +264,13 @@ Do not scroll page up when new answers appear. Add new answer on top but dont mo
         }
 
         // Display questions from Firebase
-       function displayQuestionsFromFirebase(questionsData) {
+        function displayQuestionsFromFirebase(questionsData) {
             const questionsList = document.getElementById('questionsList');
             
             if (!questionsData || Object.keys(questionsData).length === 0) {
                 questionsList.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań w bazie danych.</p>';
                 return;
             }
-            
-            // Store current scroll position
-            const scrollPosition = window.scrollY;
-            
-            // Create a temporary container to build our new content
-            const tempContainer = document.createElement('div');
             
             // Collect all questions with answers
             const allQuestions = [];
@@ -285,10 +279,22 @@ Do not scroll page up when new answers appear. Add new answer on top but dont mo
                 const userQuestions = questionsData[userId] || [];
                 
                 userQuestions.forEach(question => {
-                    if (!question.answer || question.answer.secret || !question.answer.text || question.answer.text.trim() === '') {
+                    // Skip questions without answers
+                    if (!question.answer) {
                         return;
                     }
                     
+                    // Skip questions with secret answers
+                    if (question.answer.secret) {
+                        return;
+                    }
+                    
+                    // Skip questions with empty answer text
+                    if (!question.answer.text || question.answer.text.trim() === '') {
+                        return;
+                    }
+                    
+                    // Add the question with info about who asked and who answered
                     allQuestions.push({
                         ...question,
                         askedTo: userId,
@@ -298,6 +304,7 @@ Do not scroll page up when new answers appear. Add new answer on top but dont mo
                 });
             });
             
+            // Check if there are any questions to display
             if (allQuestions.length === 0) {
                 questionsList.innerHTML = '<p style="text-align: center; color: #666;">Brak odpowiedzianych pytań.</p>';
                 return;
@@ -310,7 +317,19 @@ Do not scroll page up when new answers appear. Add new answer on top but dont mo
                 return timeB - timeA;
             });
             
-            // Build all questions in the temporary container
+            // Check if data has actually changed
+            const currentDataHash = JSON.stringify(allQuestions);
+            if (currentDataHash === lastDisplayedData) {
+                return; // No changes, don't update DOM
+            }
+            
+            // Save current scroll position
+            const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+            
+            // Clear the list
+            questionsList.innerHTML = '';
+            
+            // Display all questions chronologically
             allQuestions.forEach(question => {
                 const qaItem = document.createElement('div');
                 qaItem.className = 'qa-item';
@@ -333,20 +352,16 @@ Do not scroll page up when new answers appear. Add new answer on top but dont mo
                     </div>
                 `;
                 
-                // Add new items to the top of the temporary container
-                if (tempContainer.firstChild) {
-                    tempContainer.insertBefore(qaItem, tempContainer.firstChild);
-                } else {
-                    tempContainer.appendChild(qaItem);
-                }
+                questionsList.appendChild(qaItem);
             });
             
-            // Replace the content while preserving scroll position
-            questionsList.innerHTML = '';
-            questionsList.appendChild(tempContainer);
+            // Restore scroll position after DOM update
+            requestAnimationFrame(() => {
+                window.scrollTo(0, scrollPosition);
+            });
             
-            // Restore scroll position
-            window.scrollTo(0, scrollPosition);
+            // Update the last displayed data hash
+            lastDisplayedData = currentDataHash;
         }
         
         // Initialize the page
