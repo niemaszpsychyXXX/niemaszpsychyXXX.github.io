@@ -669,9 +669,15 @@
         }
         
         // Generate user link with code
-        function generateUserLink(userCode) {
-            return window.location.href.replace('admin.html', 'users.html') + '?code=' + userCode;
-        }
+        // Generate user link (supports both formats)
+            function generateUserLink(userId) {
+                const user = users.find(u => u.id === userId);
+                const baseUrl = window.location.href.replace('admin.html', 'users.html');
+                if (user && user.code) {
+                    return `${baseUrl}?code=${user.code}`;  // Short link format
+                }
+                return `${baseUrl}?user=${userId}`;  // Fallback to long format
+            }
         
         // Copy to clipboard
         function copyToClipboard(text) {
@@ -699,11 +705,12 @@
             }
             
             const userId = generateUserId();
-            const userCode = generateUserCode();
-            
-            users.push({ id: userId, name: name, code: userCode });
-            userCodes[userCode] = userId;
-            
+            const userCode = generateSixDigitCode();
+            users.push({ 
+                id: userId, 
+                name: name,
+                code: userCode  // Add the 6-digit code
+            });
             nameInput.value = '';
             updateUserList();
             saveDataToFirebase();
@@ -724,28 +731,33 @@
         }
         
         // Update user list
-        function updateUserList() {
-            const userList = document.getElementById('userList');
-            userList.innerHTML = '';
-            
-            users.forEach(user => {
-                const userLink = generateUserLink(user.code);
-                const userItem = document.createElement('div');
-                userItem.className = 'user-item';
-                userItem.innerHTML = `
-                    <span class="user-name">${user.name}</span>
-                    <div class="user-code">${user.code}</div>
-                    <div class="user-link">Link: ${userLink}</div>
-                    <div class="user-actions">
-                        <button onclick="window.open('${userLink}', '_blank')">Otwórz Interfejs</button>
-                        <button class="copy-btn" onclick="copyToClipboard('${user.code}')">Kopiuj Kod</button>
-                        <button class="copy-btn" onclick="copyToClipboard('${userLink}')">Kopiuj Link</button>
-                        <button class="remove-btn" onclick="removeUser('${user.id}')">Usuń Użytkownika</button>
-                    </div>
-                `;
-                userList.appendChild(userItem);
-            });
-        }
+            function updateUserList() {
+                const userList = document.getElementById('userList');
+                userList.innerHTML = '';
+                
+                users.forEach(user => {
+                    const longLink = window.location.href.replace('admin.html', 'users.html') + '?user=' + user.id;
+                    const shortLink = window.location.href.replace('admin.html', 'users.html') + '?code=' + (user.code || '');
+                    
+                    const userItem = document.createElement('div');
+                    userItem.className = 'user-item';
+                    userItem.innerHTML = `
+                        <span class="user-name">${user.name}</span>
+                        <div class="user-link">ID: ${user.id}</div>
+                        ${user.code ? `<div class="user-link">6-digit code: ${user.code}</div>` : ''}
+                        <div class="user-link">Long link: ${longLink}</div>
+                        ${user.code ? `<div class="user-link">Short link: ${shortLink}</div>` : ''}
+                        <div class="user-actions">
+                            <button onclick="window.open('${longLink}', '_blank')">Otwórz (Long)</button>
+                            ${user.code ? `<button onclick="window.open('${shortLink}', '_blank')">Otwórz (Short)</button>` : ''}
+                            <button class="copy-btn" onclick="copyToClipboard('${longLink}')">Kopiuj Long Link</button>
+                            ${user.code ? `<button class="copy-btn" onclick="copyToClipboard('${shortLink}')">Kopiuj Short Link</button>` : ''}
+                            <button class="remove-btn" onclick="removeUser('${user.id}')">Usuń Użytkownika</button>
+                        </div>
+                    `;
+                    userList.appendChild(userItem);
+                });
+            }
         
         // Generate random assignments
         function generateAssignments() {
@@ -800,6 +812,11 @@
             // Check login status on page load
             checkLogin();
         });
+
+        // Generate random 6-digit code
+        function generateSixDigitCode() {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        }
     </script>
 </body>
 </html>
