@@ -21,7 +21,7 @@
             padding: 20px;
         }
         
-        .container {
+        .container, .login-container {
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
@@ -31,8 +31,13 @@
             position: relative;
             overflow: hidden;
         }
+
+        .login-container {
+            max-width: 400px;
+            text-align: center;
+        }
         
-        .container::before {
+        .container::before, .login-container::before {
             content: '';
             position: absolute;
             top: 0;
@@ -48,6 +53,38 @@
             margin-bottom: 30px;
             font-size: 2.5em;
             font-weight: 300;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .login-form input {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .login-form input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .login-error {
+            color: #ff4757;
+            font-size: 14px;
+            margin-top: 10px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .login-error.show {
+            opacity: 1;
         }
         
         .section {
@@ -71,7 +108,7 @@
             margin-bottom: 15px;
         }
         
-        input[type="text"], textarea {
+        input[type="text"], input[type="password"], textarea {
             flex: 1;
             padding: 15px;
             border: 2px solid #e0e0e0;
@@ -80,7 +117,7 @@
             transition: all 0.3s ease;
         }
         
-        input[type="text"]:focus, textarea:focus {
+        input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -329,12 +366,45 @@
         .messages-btn:hover {
             background: #138496;
         }
+
+        .logout-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        .logout-btn:hover {
+            background: #5a6268;
+        }
+
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="auto-save-indicator" id="saveIndicator">Zapisano automatycznie</div>
     
-    <div class="container">
+    <!-- Login Screen -->
+    <div class="login-container" id="loginScreen">
+        <h1>Admin Login</h1>
+        <form class="login-form" id="loginForm">
+            <input type="password" id="passwordInput" placeholder="Hasło administratora" required>
+            <button type="submit">Zaloguj się</button>
+        </form>
+        <div class="login-error" id="loginError">Nieprawidłowe hasło!</div>
+    </div>
+    
+    <!-- Admin Panel -->
+    <div class="container hidden" id="adminPanel">
+        <button class="logout-btn" onclick="logout()">Wyloguj</button>
         <h1>Anonimowe Pytania - Administrator</h1>
 
         <div class="section">
@@ -385,6 +455,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
+        // Configuration
+        const ADMIN_PASSWORD = "adminpass"; // In production, this should be handled more securely
+        const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        
         // Global variables accessible by all scripts
         let app = null;
         let db = null;
@@ -401,6 +475,71 @@
             messagingSenderId: "381728790253",
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
+
+        // Login functionality
+        function checkLogin() {
+            const loginTime = sessionStorage.getItem('adminLoginTime');
+            if (loginTime) {
+                const now = Date.now();
+                const timeDiff = now - parseInt(loginTime);
+                
+                if (timeDiff < SESSION_DURATION) {
+                    // Valid session
+                    showAdminPanel();
+                    return true;
+                } else {
+                    // Session expired
+                    sessionStorage.removeItem('adminLoginTime');
+                }
+            }
+            
+            // No valid session, show login
+            showLoginScreen();
+            return false;
+        }
+
+        function showLoginScreen() {
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('adminPanel').classList.add('hidden');
+        }
+
+        function showAdminPanel() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('hidden');
+        }
+
+        function login(password) {
+            if (password === ADMIN_PASSWORD) {
+                sessionStorage.setItem('adminLoginTime', Date.now().toString());
+                showAdminPanel();
+                // Auto-initialize Firebase after successful login
+                initFirebase();
+                return true;
+            }
+            return false;
+        }
+
+        function logout() {
+            sessionStorage.removeItem('adminLoginTime');
+            showLoginScreen();
+            
+            // Reset form
+            document.getElementById('passwordInput').value = '';
+            document.getElementById('loginError').classList.remove('show');
+        }
+
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const password = document.getElementById('passwordInput').value;
+            
+            if (login(password)) {
+                document.getElementById('loginError').classList.remove('show');
+            } else {
+                document.getElementById('loginError').classList.add('show');
+                document.getElementById('passwordInput').value = '';
+            }
+        });
 
         // Initialize Firebase
         window.initFirebase = async function() {
@@ -622,8 +761,8 @@
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
-            // Auto-initialize Firebase on page load
-            initFirebase();
+            // Check login status on page load
+            checkLogin();
         });
     </script>
 </body>
