@@ -184,6 +184,19 @@
             margin-bottom: 10px;
         }
         
+        .user-code {
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 5px;
+            text-align: center;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+        
         .remove-btn {
             background: #ff4757;
             color: white;
@@ -465,6 +478,7 @@
         let users = [];
         let assignments = {};
         let questions = {};
+        let userCodes = {}; // Maps user codes to user IDs
         
         // Firebase configuration
         const firebaseConfig = {
@@ -556,6 +570,7 @@
                     users = data.users || [];
                     assignments = data.assignments || {};
                     questions = data.questions || {};
+                    userCodes = data.userCodes || {};
                     
                     updateUI();
                     
@@ -586,6 +601,7 @@
                     users: users,
                     assignments: assignments,
                     questions: questions,
+                    userCodes: userCodes,
                     lastUpdated: new Date().toISOString()
                 });
                 
@@ -643,18 +659,27 @@
             return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         }
         
-        // Generate user link
-        function generateUserLink(userId) {
-            return window.location.href.replace('admin.html', 'users.html') + '?user=' + userId;
+        // Generate 6-digit user code
+        function generateUserCode() {
+            let code;
+            do {
+                code = Math.floor(100000 + Math.random() * 900000).toString();
+            } while (userCodes[code]); // Ensure uniqueness
+            return code;
+        }
+        
+        // Generate user link with code
+        function generateUserLink(userCode) {
+            return window.location.href.replace('admin.html', 'users.html') + '?code=' + userCode;
         }
         
         // Copy to clipboard
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                alert('Link skopiowany do schowka!');
+                alert('Kod skopiowany do schowka!');
             }).catch(err => {
                 console.error('Błąd kopiowania:', err);
-                alert('Nie udało się skopiować linku');
+                alert('Nie udało się skopiować kodu');
             });
         }
         
@@ -674,7 +699,11 @@
             }
             
             const userId = generateUserId();
-            users.push({ id: userId, name: name });
+            const userCode = generateUserCode();
+            
+            users.push({ id: userId, name: name, code: userCode });
+            userCodes[userCode] = userId;
+            
             nameInput.value = '';
             updateUserList();
             saveDataToFirebase();
@@ -682,6 +711,11 @@
         
         // Remove user
         function removeUser(userId) {
+            const user = users.find(u => u.id === userId);
+            if (user && user.code) {
+                delete userCodes[user.code];
+            }
+            
             users = users.filter(user => user.id !== userId);
             delete assignments[userId];
             delete questions[userId];
@@ -695,14 +729,16 @@
             userList.innerHTML = '';
             
             users.forEach(user => {
-                const userLink = generateUserLink(user.id);
+                const userLink = generateUserLink(user.code);
                 const userItem = document.createElement('div');
                 userItem.className = 'user-item';
                 userItem.innerHTML = `
                     <span class="user-name">${user.name}</span>
-                    <div class="user-link">${userLink}</div>
+                    <div class="user-code">${user.code}</div>
+                    <div class="user-link">Link: ${userLink}</div>
                     <div class="user-actions">
                         <button onclick="window.open('${userLink}', '_blank')">Otwórz Interfejs</button>
+                        <button class="copy-btn" onclick="copyToClipboard('${user.code}')">Kopiuj Kod</button>
                         <button class="copy-btn" onclick="copyToClipboard('${userLink}')">Kopiuj Link</button>
                         <button class="remove-btn" onclick="removeUser('${user.id}')">Usuń Użytkownika</button>
                     </div>
@@ -743,13 +779,13 @@
             Object.keys(assignments).forEach(fromUserId => {
                 const fromUser = users.find(u => u.id === fromUserId);
                 const toUser = users.find(u => u.id === assignments[fromUserId]);
-                const userLink = generateUserLink(fromUserId);
+                const userLink = generateUserLink(fromUser.code);
                 
                 if (fromUser && toUser) {
                     const assignmentItem = document.createElement('div');
                     assignmentItem.className = 'assignment-item';
                     assignmentItem.innerHTML = `
-                        <strong>${fromUser.name}</strong> → ${toUser.name}
+                        <strong>${fromUser.name}</strong> (kod: ${fromUser.code}) → ${toUser.name}
                         <div class="link-display">
                             Link użytkownika: <span onclick="copyToClipboard('${userLink}')" style="cursor: pointer; color: #667eea; text-decoration: underline;">${userLink}</span>
                         </div>
