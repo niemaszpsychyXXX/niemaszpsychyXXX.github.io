@@ -41,85 +41,6 @@
             height: 4px;
             background: linear-gradient(90deg, #667eea, #764ba2);
         }
-
-        .login-container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            padding: 40px;
-            max-width: 400px;
-            width: 100%;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .login-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-        }
-
-        .login-form {
-            text-align: center;
-        }
-
-        .login-form h1 {
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 2em;
-            font-weight: 300;
-        }
-
-        .login-form .input-group {
-            margin-bottom: 20px;
-        }
-
-        .login-form input[type="password"] {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .login-form input[type="password"]:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .login-form button {
-            width: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
-
-        .login-form button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .login-form button:active {
-            transform: translateY(0);
-        }
-
-        .login-error {
-            color: #ff4757;
-            margin-top: 15px;
-            font-size: 14px;
-        }
         
         h1 {
             text-align: center;
@@ -408,66 +329,13 @@
         .messages-btn:hover {
             background: #138496;
         }
-
-        .logout-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: #6c757d;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .logout-btn:hover {
-            background: #5a6268;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .user-access-notice {
-            background: #e3f2fd;
-            border: 1px solid #2196f3;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            color: #1976d2;
-        }
-
-        .user-access-notice strong {
-            color: #0d47a1;
-        }
     </style>
 </head>
 <body>
     <div class="auto-save-indicator" id="saveIndicator">Zapisano automatycznie</div>
     
-    <!-- Login form -->
-    <div class="login-container" id="loginContainer">
-        <div class="login-form">
-            <h1>Logowanie Administratora</h1>
-            <div class="input-group">
-                <input type="password" id="adminPassword" placeholder="Hasło administratora">
-            </div>
-            <button onclick="login()">Zaloguj</button>
-            <div class="login-error" id="loginError"></div>
-        </div>
-    </div>
-
-    <!-- Main admin panel -->
-    <div class="container hidden" id="adminPanel">
-        <button class="logout-btn" onclick="logout()">Wyloguj</button>
+    <div class="container">
         <h1>Anonimowe Pytania - Administrator</h1>
-
-        <!-- User access notice -->
-        <div class="user-access-notice" id="userAccessNotice" style="display: none;">
-            <strong>Tryb dostępu użytkownika:</strong> Strona została otwarta z linkiem użytkownika. Niektóre funkcje administratora mogą być ograniczone.
-        </div>
 
         <div class="section">
             <h2>Zarządzanie Wiadomościami</h2>
@@ -493,19 +361,6 @@
                 </div>
                 <br>
                 <button class="save-btn" onclick="initFirebase()">Połącz z Firebase</button>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2>Konfiguracja Hasła Administratora</h2>
-            <div class="firebase-config">
-                <h3>Zmień hasło administratora</h3>
-                <input type="password" id="newAdminPassword" placeholder="Nowe hasło administratora">
-                <div class="config-help">
-                    Hasło jest przechowywane w Firebase. Zmiana hasła będzie wymagała ponownego logowania.
-                </div>
-                <br>
-                <button class="save-btn" onclick="changeAdminPassword()">Zmień Hasło</button>
             </div>
         </div>
         
@@ -536,8 +391,6 @@
         let users = [];
         let assignments = {};
         let questions = {};
-        let adminPassword = null;
-        let isUserAccessMode = false;
         
         // Firebase configuration
         const firebaseConfig = {
@@ -548,188 +401,6 @@
             messagingSenderId: "381728790253",
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
-
-        // Check if URL contains user parameter
-        function checkUserAccess() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const userParam = urlParams.get('user');
-            
-            if (userParam) {
-                // User access mode - bypass login
-                isUserAccessMode = true;
-                sessionStorage.setItem('userAccessMode', 'true');
-                sessionStorage.setItem('currentUserId', userParam);
-                return true;
-            }
-            
-            // Check if already in user access mode
-            if (sessionStorage.getItem('userAccessMode') === 'true') {
-                isUserAccessMode = true;
-                return true;
-            }
-            
-            return false;
-        }
-
-        // Load admin password from secrets.json or Firebase
-        async function loadAdminPassword() {
-            try {
-                // First try to load from secrets.json
-                const response = await fetch('/secrets.json');
-                if (response.ok) {
-                    const secrets = await response.json();
-                    adminPassword = secrets.admin_password;
-                    console.log('Admin password loaded from secrets.json');
-                    return adminPassword;
-                }
-            } catch (error) {
-                console.log('secrets.json not found, trying Firebase...');
-            }
-
-            // If secrets.json not available, try Firebase
-            try {
-                if (!db) {
-                    app = firebase.initializeApp(firebaseConfig);
-                    db = firebase.database();
-                }
-                
-                const snapshot = await firebase.database().ref('/config/admin_password').once('value');
-                if (snapshot.exists()) {
-                    adminPassword = snapshot.val();
-                    console.log('Admin password loaded from Firebase');
-                    return adminPassword;
-                } else {
-                    // Set default password in Firebase if not exists
-                    adminPassword = 'admin123';
-                    await firebase.database().ref('/config/admin_password').set(adminPassword);
-                    console.log('Default admin password set in Firebase');
-                    showMessage('warning', 'Domyślne hasło administratora zostało ustawione w Firebase. Zmień je w konfiguracji!');
-                    return adminPassword;
-                }
-            } catch (error) {
-                console.error('Error loading password from Firebase:', error);
-                // Fallback to default password
-                adminPassword = 'admin123';
-                showMessage('error', 'Nie udało się załadować hasła. Używane jest domyślne hasło: admin123');
-                return adminPassword;
-            }
-        }
-
-        // Check if user is logged in
-        function checkLoginStatus() {
-            // Check for user access mode first
-            if (checkUserAccess()) {
-                showAdminPanel();
-                showUserAccessNotice();
-                return;
-            }
-            
-            // Regular admin login check
-            const loginStatus = sessionStorage.getItem('adminLoggedIn');
-            if (loginStatus === 'true') {
-                showAdminPanel();
-            } else {
-                showLoginForm();
-            }
-        }
-
-        // Show user access notice
-        function showUserAccessNotice() {
-            const notice = document.getElementById('userAccessNotice');
-            if (notice && isUserAccessMode) {
-                notice.style.display = 'block';
-            }
-        }
-
-        // Show login form
-        function showLoginForm() {
-            document.getElementById('loginContainer').classList.remove('hidden');
-            document.getElementById('adminPanel').classList.add('hidden');
-        }
-
-        // Show admin panel
-        function showAdminPanel() {
-            document.getElementById('loginContainer').classList.add('hidden');
-            document.getElementById('adminPanel').classList.remove('hidden');
-            initFirebase();
-        }
-
-        // Login function
-        async function login() {
-            const password = document.getElementById('adminPassword').value;
-            const errorDiv = document.getElementById('loginError');
-            
-            // Load admin password if not already loaded
-            if (!adminPassword) {
-                errorDiv.textContent = 'Ładowanie konfiguracji...';
-                await loadAdminPassword();
-                errorDiv.textContent = '';
-            }
-            
-            if (password === adminPassword) {
-                sessionStorage.setItem('adminLoggedIn', 'true');
-                showAdminPanel();
-                errorDiv.textContent = '';
-            } else {
-                errorDiv.textContent = 'Nieprawidłowe hasło administratora';
-            }
-        }
-
-        // Logout function
-        function logout() {
-            sessionStorage.removeItem('adminLoggedIn');
-            sessionStorage.removeItem('userAccessMode');
-            sessionStorage.removeItem('currentUserId');
-            isUserAccessMode = false;
-            
-            // If there's a user parameter in URL, remove it
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('user')) {
-                const newUrl = window.location.pathname;
-                window.history.replaceState({}, document.title, newUrl);
-            }
-            
-            showLoginForm();
-        }
-
-        // Handle Enter key in password field
-        document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('adminPassword').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    login();
-                }
-            });
-        });
-
-        // Change admin password
-        async function changeAdminPassword() {
-            const newPassword = document.getElementById('newAdminPassword').value.trim();
-            
-            if (newPassword === '') {
-                alert('Proszę wpisać nowe hasło');
-                return;
-            }
-            
-            if (newPassword.length < 6) {
-                alert('Hasło musi mieć co najmniej 6 znaków');
-                return;
-            }
-            
-            if (!db) {
-                alert('Najpierw połącz się z Firebase');
-                return;
-            }
-            
-            try {
-                await firebase.database().ref('/config/admin_password').set(newPassword);
-                adminPassword = newPassword;
-                document.getElementById('newAdminPassword').value = '';
-                showMessage('success', 'Hasło administratora zostało zmienione pomyślnie!');
-            } catch (error) {
-                console.error('Error changing admin password:', error);
-                showMessage('error', 'Błąd zmiany hasła: ' + error.message);
-            }
-        }
 
         // Initialize Firebase
         window.initFirebase = async function() {
@@ -835,7 +506,8 @@
         
         // Generate user link
         function generateUserLink(userId) {
-            return window.location.href.replace('admin.html', 'users.html') + '?user=' + userId;
+            const baseUrl = window.location.origin + window.location.pathname.replace('/admin.html', '');
+            return baseUrl + '/user=' + userId;
         }
         
         // Copy to clipboard
@@ -926,4 +598,34 @@
             assignmentsList.innerHTML = '';
             
             if (Object.keys(assignments).length === 0) {
-                assignmentsList.innerHTML = '<p style="text-align: center; color: #666;">Brak wygenerowanych przydziałów.
+                assignmentsList.innerHTML = '<p style="text-align: center; color: #666;">Brak wygenerowanych przydziałów.</p>';
+                return;
+            }
+            
+            Object.keys(assignments).forEach(fromUserId => {
+                const fromUser = users.find(u => u.id === fromUserId);
+                const toUser = users.find(u => u.id === assignments[fromUserId]);
+                const userLink = generateUserLink(fromUserId);
+                
+                if (fromUser && toUser) {
+                    const assignmentItem = document.createElement('div');
+                    assignmentItem.className = 'assignment-item';
+                    assignmentItem.innerHTML = `
+                        <strong>${fromUser.name}</strong> → ${toUser.name}
+                        <div class="link-display">
+                            Link użytkownika: <span onclick="copyToClipboard('${userLink}')" style="cursor: pointer; color: #667eea; text-decoration: underline;">${userLink}</span>
+                        </div>
+                    `;
+                    assignmentsList.appendChild(assignmentItem);
+                }
+            });
+        }
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-initialize Firebase on page load
+            initFirebase();
+        });
+    </script>
+</body>
+</html>
