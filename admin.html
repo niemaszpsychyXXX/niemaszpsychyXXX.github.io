@@ -41,6 +41,85 @@
             height: 4px;
             background: linear-gradient(90deg, #667eea, #764ba2);
         }
+
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 400px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .login-form {
+            text-align: center;
+        }
+
+        .login-form h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2em;
+            font-weight: 300;
+        }
+
+        .login-form .input-group {
+            margin-bottom: 20px;
+        }
+
+        .login-form input[type="password"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .login-form input[type="password"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .login-form button {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .login-form button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .login-form button:active {
+            transform: translateY(0);
+        }
+
+        .login-error {
+            color: #ff4757;
+            margin-top: 15px;
+            font-size: 14px;
+        }
         
         h1 {
             text-align: center;
@@ -329,24 +408,47 @@
         .messages-btn:hover {
             background: #138496;
         }
+
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .logout-btn:hover {
+            background: #5a6268;
+        }
+
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <script>
-    // Check login status
-    const loginExpiry = localStorage.getItem('adminLoggedIn');
-    const currentTime = new Date().getTime();
-    
-    if (!loginExpiry || currentTime > parseInt(loginExpiry)) {
-        // Not logged in or session expired - redirect to login
-        localStorage.removeItem('adminLoggedIn');
-        window.location.href = 'index.html';
-    }
-    </script>
-    
     <div class="auto-save-indicator" id="saveIndicator">Zapisano automatycznie</div>
     
-    <div class="container">
+    <!-- Login form -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-form">
+            <h1>Logowanie Administratora</h1>
+            <div class="input-group">
+                <input type="password" id="adminPassword" placeholder="Hasło administratora">
+            </div>
+            <button onclick="login()">Zaloguj</button>
+            <div class="login-error" id="loginError"></div>
+        </div>
+    </div>
+
+    <!-- Main admin panel -->
+    <div class="container hidden" id="adminPanel">
+        <button class="logout-btn" onclick="logout()">Wyloguj</button>
         <h1>Anonimowe Pytania - Administrator</h1>
 
         <div class="section">
@@ -397,6 +499,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
+        // Admin password - change this to your desired password
+        const ADMIN_PASSWORD = 'admin123';
+        
         // Global variables accessible by all scripts
         let app = null;
         let db = null;
@@ -413,6 +518,58 @@
             messagingSenderId: "381728790253",
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
+
+        // Check if user is logged in
+        function checkLoginStatus() {
+            const loginStatus = sessionStorage.getItem('adminLoggedIn');
+            if (loginStatus === 'true') {
+                showAdminPanel();
+            } else {
+                showLoginForm();
+            }
+        }
+
+        // Show login form
+        function showLoginForm() {
+            document.getElementById('loginContainer').classList.remove('hidden');
+            document.getElementById('adminPanel').classList.add('hidden');
+        }
+
+        // Show admin panel
+        function showAdminPanel() {
+            document.getElementById('loginContainer').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('hidden');
+            initFirebase();
+        }
+
+        // Login function
+        function login() {
+            const password = document.getElementById('adminPassword').value;
+            const errorDiv = document.getElementById('loginError');
+            
+            if (password === ADMIN_PASSWORD) {
+                sessionStorage.setItem('adminLoggedIn', 'true');
+                showAdminPanel();
+                errorDiv.textContent = '';
+            } else {
+                errorDiv.textContent = 'Nieprawidłowe hasło administratora';
+            }
+        }
+
+        // Logout function
+        function logout() {
+            sessionStorage.removeItem('adminLoggedIn');
+            showLoginForm();
+        }
+
+        // Handle Enter key in password field
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('adminPassword').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    login();
+                }
+            });
+        });
 
         // Initialize Firebase
         window.initFirebase = async function() {
@@ -634,7 +791,7 @@
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
-            initFirebase();
+            checkLoginStatus();
         });
     </script>
 </body>
