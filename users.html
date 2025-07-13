@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikacja Anonimowych Pytań</title>
+    <title>Nie masz psychy!</title>
     <style>
         * {
             margin: 0;
@@ -12,57 +12,63 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #fccbe2;
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            padding: 40px 20px;
         }
         
         .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            padding: 40px;
             max-width: 800px;
-            width: 100%;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
+            margin: 0 auto;
         }
         
         h1 {
             text-align: center;
-            color: #333;
-            margin-bottom: 30px;
+            color: #b6196e;
+            margin-bottom: 40px;
             font-size: 2.5em;
-            font-weight: 300;
+            font-weight: 700;
+        }
+        
+        .user-interface {
+            text-align: center;
+        }
+        
+        .user-header {
+            background: #fafafa;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .user-header h1 {
+            color: #b83280;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        
+        .user-header p {
+            color: #666;
+            font-size: 1.1em;
         }
         
         .section {
+            background: #fafafa;
+            border-radius: 20px;
+            padding: 30px;
             margin-bottom: 30px;
-            padding: 20px;
-            border-radius: 15px;
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
         }
         
         .section h2 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 1.5em;
-            font-weight: 400;
+            color: #b83280;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            font-weight: 600;
         }
         
         .input-group {
@@ -82,8 +88,8 @@
         
         input[type="text"]:focus, textarea:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #b83280;
+            box-shadow: 0 0 0 3px rgba(184, 50, 128, 0.1);
         }
         
         textarea {
@@ -92,7 +98,7 @@
         }
         
         button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #b83280 0%, #b6196e 100%);
             color: white;
             border: none;
             padding: 15px 30px;
@@ -105,7 +111,7 @@
         
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 10px 20px rgba(184, 50, 128, 0.3);
         }
         
         button:active {
@@ -119,48 +125,113 @@
             box-shadow: none;
         }
         
-        .user-interface {
-            text-align: center;
+        .user-section {
+            background: #fafafa;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
         }
         
-        .user-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .questions-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
+        .user-section h2 {
+            color: #b83280;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            font-weight: 600;
         }
         
         .question-item {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            border-left: 4px solid #764ba2;
+            background: transparent;
+            margin-bottom: 30px;
+            border: none;
+            padding: 20px 0;
             position: relative;
         }
         
-        .question-item:last-child {
-            margin-bottom: 0;
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #888;
         }
         
-        .question-text {
-            font-size: 16px;
-            line-height: 1.5;
-            color: #333;
+        .question-author {
+            font-weight: 600;
+            color: #b1b1b1;
         }
         
         .question-time {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
+            color: #aaa;
+        }
+        
+        .question-content {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #b1b1b1;
+            margin-bottom: 20px;
+            white-space: pre-line;
+            border-left: 4px solid #ddd;
+            padding-left: 15px;
+            min-height: 40px;
+        }
+        
+        /* Answer section */
+        .answer-section {
+            margin-top: 15px;
+            padding-top: 0;
+            border-top: none;
+        }
+        
+        .answer-item {
+            border-radius: 0;
+            margin-bottom: 0;
+        }
+        
+        .answer-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .answer-author {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .answer-time {
+            color: #aaa;
+        }
+        
+        .answer-content {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-line;
+            border-left: 4px solid #090909;
+            padding-left: 15px;
+            min-height: 40px;
+        }
+        
+        .answer-form {
+            margin-top: 10px;
+        }
+
+        .answer-textarea {
+            width: 100%;
+            min-height: 60px;
+            margin-bottom: 5px;
+        }
+
+        .answer-btn {
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+
+        .has-answer {
+            border-left-color: #2ed573;
         }
         
         .success-message {
@@ -190,43 +261,6 @@
             text-align: center;
         }
 
-        /* Answer styles */
-        .answer-section {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px dashed #ddd;
-        }
-
-        .answer-text {
-            font-style: italic;
-            color: #555;
-            margin-bottom: 10px;
-        }
-
-        .answer-time {
-            font-size: 11px;
-            color: #888;
-        }
-
-        .answer-form {
-            margin-top: 10px;
-        }
-
-        .answer-textarea {
-            width: 100%;
-            min-height: 60px;
-            margin-bottom: 5px;
-        }
-
-        .answer-btn {
-            padding: 5px 10px;
-            font-size: 14px;
-        }
-
-        .has-answer {
-            border-left-color: #2ed573;
-        }
-
         .admin-access-btn {
             position: fixed;
             bottom: 20px;
@@ -239,10 +273,37 @@
             cursor: pointer;
             font-size: 14px;
         }
+
+        .hidden {
+            display: none;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+                margin-bottom: 30px;
+            }
+            
+            .section, .user-section {
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .section h2, .user-section h2 {
+                font-size: 1.5em;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <h1>Aplikacja Anonimowych Pytań</h1>
+        
         <div class="user-interface">
             <div class="user-header">
                 <h1 id="userWelcome">Witaj!</h1>
@@ -259,7 +320,7 @@
                 <div id="questionMessage"></div>
             </div>
             
-            <div class="questions-section">
+            <div class="user-section">
                 <h2>Pytania dla Ciebie</h2>
                 <div id="receivedQuestions">
                     <p style="text-align: center; color: #666;">Brak pytań.</p>
@@ -267,7 +328,7 @@
             </div>
         </div>
 
-        <div class="questions-section">
+        <div class="user-section">
             <h2>Odpowiedzi Uczestników</h2>
             <div id="askedQuestions">
                 <p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>
@@ -442,7 +503,7 @@
             }
         }
 
-        // Update received questions
+        // Update received questions with consistent styling
         function updateReceivedQuestions() {
             const receivedQuestionsDiv = document.getElementById('receivedQuestions');
             const userQuestions = questions[currentUserId] || [];
@@ -462,9 +523,14 @@
                 if (question.answer) {
                     answerSection = `
                         <div class="answer-section">
-                            <div class="answer-text">${question.answer.text}</div>
-                            ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Sekret)</div>' : ''}
-                            <div class="answer-time">Odpowiedź: ${question.answer.timestamp}</div>
+                            <div class="answer-item">
+                                <div class="answer-header">
+                                    <span class="answer-author">Ty</span>
+                                    <span class="answer-time">${question.answer.timestamp}</span>
+                                </div>
+                                <div class="answer-content">${question.answer.text}</div>
+                                ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Sekret)</div>' : ''}
+                            </div>
                         </div>
                     `;
                 } else {
@@ -481,8 +547,11 @@
                 }
                 
                 questionItem.innerHTML = `
-                    <div class="question-text">${question.text}</div>
-                    <div class="question-time">Otrzymano: ${question.timestamp}${fromUser ? ` (od ${fromUser.name})` : ''}</div>
+                    <div class="question-header">
+                        <span class="question-author">${fromUser ? fromUser.name : 'Nieznany użytkownik'}</span>
+                        <span class="question-time">${question.timestamp}</span>
+                    </div>
+                    <div class="question-content">${question.text}</div>
                     ${answerSection}
                 `;
                 receivedQuestionsDiv.appendChild(questionItem);
@@ -515,7 +584,7 @@
             updateReceivedQuestions();
         }
 
-        // Update asked questions
+        // Update asked questions with consistent styling
         function updateAskedQuestions() {
             const askedQuestionsDiv = document.getElementById('askedQuestions');
             
@@ -528,7 +597,8 @@
                         const targetUser = users.find(u => u.id === targetUserId);
                         userQuestions.push({
                             ...question,
-                            targetUser: targetUser
+                            targetUser: targetUser,
+                            askedTo: targetUserId
                         });
                     }
                 });
@@ -549,20 +619,43 @@
                 
                 let answerSection = '';
                 if (question.answer) {
-                    answerSection = `
-                        <div class="answer-section ${question.answer.secret ? 'secret-answer' : ''}">
-                            <div class="answer-text">${question.answer.text}</div>
-                            ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>' : ''}
-                            <div class="answer-time">Odpowiedź: ${question.answer.timestamp}</div>
-                        </div>
-                    `;
+                    // Skip secret answers in public view
+                    if (question.answer.secret) {
+                        answerSection = `
+                            <div class="answer-section">
+                                <div class="answer-item">
+                                    <div class="answer-header">
+                                        <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
+                                        <span class="answer-time">${question.answer.timestamp}</span>
+                                    </div>
+                                    <div class="answer-content">${question.answer.text}</div>
+                                    <div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        answerSection = `
+                            <div class="answer-section">
+                                <div class="answer-item">
+                                    <div class="answer-header">
+                                        <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
+                                        <span class="answer-time">${question.answer.timestamp}</span>
+                                    </div>
+                                    <div class="answer-content">${question.answer.text}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
                 } else {
                     answerSection = '<div class="answer-section" style="color: #888;">(Brak odpowiedzi)</div>';
                 }
                 
                 questionItem.innerHTML = `
-                    <div class="question-text">${question.text}</div>
-                    <div class="question-time">Wysłano: ${question.timestamp}${question.targetUser ? ` (do ${question.targetUser.name})` : ''}</div>
+                    <div class="question-header">
+                        <span class="question-author">Ty</span>
+                        <span class="question-time">${question.timestamp}</span>
+                    </div>
+                    <div class="question-content">${question.text}</div>
                     ${answerSection}
                 `;
                 askedQuestionsDiv.appendChild(questionItem);
