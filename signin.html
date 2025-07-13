@@ -19,6 +19,15 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
+            transition: background 0.3s ease;
+        }
+        
+        body.green-theme {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+        }
+        
+        body.pink-theme {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
         }
         
         .container {
@@ -41,6 +50,15 @@
             right: 0;
             height: 4px;
             background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: background 0.3s ease;
+        }
+        
+        .green-theme .container::before {
+            background: linear-gradient(90deg, #56ab2f, #a8e6cf);
+        }
+        
+        .pink-theme .container::before {
+            background: linear-gradient(90deg, #ff9a9e, #fecfef);
         }
         
         h1 {
@@ -53,6 +71,14 @@
 
         .form-group {
             margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            text-align: left;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
         }
 
         input {
@@ -69,6 +95,124 @@
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
+        
+        .green-theme input:focus {
+            border-color: #56ab2f;
+            box-shadow: 0 0 0 3px rgba(86, 171, 47, 0.1);
+        }
+        
+        .pink-theme input:focus {
+            border-color: #ff9a9e;
+            box-shadow: 0 0 0 3px rgba(255, 154, 158, 0.1);
+        }
+
+        .theme-selector {
+            position: relative;
+            width: 100%;
+        }
+
+        .theme-dropdown {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background: white;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .theme-dropdown:hover {
+            border-color: #667eea;
+        }
+
+        .green-theme .theme-dropdown:hover {
+            border-color: #56ab2f;
+        }
+
+        .pink-theme .theme-dropdown:hover {
+            border-color: #ff9a9e;
+        }
+
+        .theme-dropdown-content {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            z-index: 10;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .theme-dropdown-content.show {
+            display: block;
+        }
+
+        .theme-option {
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .theme-option:hover {
+            background: #f8f9fa;
+        }
+
+        .theme-option:first-child {
+            border-radius: 8px 8px 0 0;
+        }
+
+        .theme-option:last-child {
+            border-radius: 0 0 8px 8px;
+        }
+
+        .theme-color-circle {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .theme-color-circle.blue {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .theme-color-circle.green {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+        }
+
+        .theme-color-circle.pink {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        }
+
+        .selected-theme {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dropdown-arrow {
+            font-size: 12px;
+            color: #666;
+            transition: transform 0.3s ease;
+        }
+
+        .dropdown-arrow.rotated {
+            transform: rotate(180deg);
+        }
 
         button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -83,9 +227,25 @@
             width: 100%;
         }
         
+        .green-theme button {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+        }
+        
+        .pink-theme button {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        }
+        
         button:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .green-theme button:hover {
+            box-shadow: 0 10px 20px rgba(86, 171, 47, 0.3);
+        }
+        
+        .pink-theme button:hover {
+            box-shadow: 0 10px 20px rgba(255, 154, 158, 0.3);
         }
         
         button:active {
@@ -106,6 +266,14 @@
             margin: 15px 0;
             color: #667eea;
             font-weight: bold;
+        }
+        
+        .green-theme .user-link {
+            color: #56ab2f;
+        }
+        
+        .pink-theme .user-link {
+            color: #ff9a9e;
         }
 
         .copy-btn {
@@ -147,7 +315,40 @@
         <h1>Zapisy do "Nie masz psychy"</h1>
         
         <div class="form-group">
+            <label for="userNameInput">Nazwa użytkownika:</label>
             <input type="text" id="userNameInput" placeholder="Wpisz nazwę użytkownika">
+        </div>
+        
+        <div class="form-group">
+            <label for="threadsNickInput">Nick z Threads:</label>
+            <input type="text" id="threadsNickInput" placeholder="Wpisz swój nick z Threads">
+        </div>
+        
+        <div class="form-group">
+            <label>Wybierz motyw:</label>
+            <div class="theme-selector">
+                <div class="theme-dropdown" onclick="toggleThemeDropdown()">
+                    <div class="selected-theme">
+                        <div class="theme-color-circle blue"></div>
+                        <span>Niebieski</span>
+                    </div>
+                    <div class="dropdown-arrow">▼</div>
+                </div>
+                <div class="theme-dropdown-content" id="themeDropdown">
+                    <div class="theme-option" onclick="selectTheme('blue')">
+                        <div class="theme-color-circle blue"></div>
+                        <span>Niebieski</span>
+                    </div>
+                    <div class="theme-option" onclick="selectTheme('green')">
+                        <div class="theme-color-circle green"></div>
+                        <span>Zielony</span>
+                    </div>
+                    <div class="theme-option" onclick="selectTheme('pink')">
+                        <div class="theme-color-circle pink"></div>
+                        <span>Różowy</span>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <button onclick="addUser()">Zapisz mnie!</button>
@@ -179,6 +380,7 @@
         // Initialize Firebase
         let app = null;
         let db = null;
+        let selectedTheme = 'blue';
         
         try {
             app = firebase.initializeApp(firebaseConfig);
@@ -186,6 +388,49 @@
         } catch (error) {
             showError("Failed to connect to database. Please try again later.");
         }
+
+        // Theme selection
+        function toggleThemeDropdown() {
+            const dropdown = document.getElementById('themeDropdown');
+            const arrow = document.querySelector('.dropdown-arrow');
+            
+            dropdown.classList.toggle('show');
+            arrow.classList.toggle('rotated');
+        }
+
+        function selectTheme(theme) {
+            selectedTheme = theme;
+            
+            // Update selected theme display
+            const selectedThemeElement = document.querySelector('.selected-theme');
+            const themeNames = {
+                'blue': 'Niebieski',
+                'green': 'Zielony',
+                'pink': 'Różowy'
+            };
+            
+            selectedThemeElement.innerHTML = `
+                <div class="theme-color-circle ${theme}"></div>
+                <span>${themeNames[theme]}</span>
+            `;
+            
+            // Update body theme
+            document.body.className = theme === 'blue' ? '' : `${theme}-theme`;
+            
+            // Close dropdown
+            toggleThemeDropdown();
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('themeDropdown');
+            const themeSelector = document.querySelector('.theme-selector');
+            
+            if (!themeSelector.contains(event.target)) {
+                dropdown.classList.remove('show');
+                document.querySelector('.dropdown-arrow').classList.remove('rotated');
+            }
+        });
 
         // Generate unique user ID
         function generateUserId() {
@@ -200,10 +445,17 @@
         // Add user to database
         async function addUser() {
             const nameInput = document.getElementById('userNameInput');
+            const threadsNickInput = document.getElementById('threadsNickInput');
             const name = nameInput.value.trim();
+            const threadsNick = threadsNickInput.value.trim();
             
             if (!name) {
-                showError("Wpisz nazwę!");
+                showError("Wpisz nazwę użytkownika!");
+                return;
+            }
+            
+            if (!threadsNick) {
+                showError("Wpisz swój nick z Threads!");
                 return;
             }
             
@@ -229,6 +481,8 @@
                 const newUser = {
                     id: userId,
                     name: name,
+                    threadsNick: threadsNick,
+                    theme: selectedTheme,
                     code: userCode
                 };
                 
