@@ -11,11 +11,45 @@
             box-sizing: border-box;
         }
         
+        :root {
+            /* Default Pink Theme */
+            --primary-bg: #fccbe2;
+            --primary-color: #b6196e;
+            --secondary-color: #b83280;
+            --gradient-start: #b83280;
+            --gradient-end: #b6196e;
+            --hover-shadow: rgba(184, 50, 128, 0.3);
+            --focus-shadow: rgba(184, 50, 128, 0.1);
+        }
+        
+        /* Blue Theme */
+        .theme-blue {
+            --primary-bg: #cbe2fc;
+            --primary-color: #196eb6;
+            --secondary-color: #3280b8;
+            --gradient-start: #3280b8;
+            --gradient-end: #196eb6;
+            --hover-shadow: rgba(50, 128, 184, 0.3);
+            --focus-shadow: rgba(50, 128, 184, 0.1);
+        }
+        
+        /* Green Theme */
+        .theme-green {
+            --primary-bg: #cbfce2;
+            --primary-color: #19b66e;
+            --secondary-color: #32b880;
+            --gradient-start: #32b880;
+            --gradient-end: #19b66e;
+            --hover-shadow: rgba(50, 184, 128, 0.3);
+            --focus-shadow: rgba(50, 184, 128, 0.1);
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: #fccbe2;
+            background: var(--primary-bg);
             min-height: 100vh;
             padding: 40px 20px;
+            transition: background-color 0.3s ease;
         }
         
         .container {
@@ -25,10 +59,11 @@
         
         h1 {
             text-align: center;
-            color: #b6196e;
+            color: var(--primary-color);
             margin-bottom: 40px;
             font-size: 2.5em;
             font-weight: 700;
+            transition: color 0.3s ease;
         }
         
         .user-interface {
@@ -45,9 +80,10 @@
         }
         
         .user-header h1 {
-            color: #b83280;
+            color: var(--secondary-color);
             margin-bottom: 10px;
             font-size: 2em;
+            transition: color 0.3s ease;
         }
         
         .user-header p {
@@ -65,10 +101,11 @@
         }
         
         .section h2 {
-            color: #b83280;
+            color: var(--secondary-color);
             margin-bottom: 25px;
             font-size: 1.8em;
             font-weight: 600;
+            transition: color 0.3s ease;
         }
         
         .input-group {
@@ -88,8 +125,8 @@
         
         input[type="text"]:focus, textarea:focus {
             outline: none;
-            border-color: #b83280;
-            box-shadow: 0 0 0 3px rgba(184, 50, 128, 0.1);
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px var(--focus-shadow);
         }
         
         textarea {
@@ -98,7 +135,7 @@
         }
         
         button {
-            background: linear-gradient(135deg, #b83280 0%, #b6196e 100%);
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
             color: white;
             border: none;
             padding: 15px 30px;
@@ -111,7 +148,7 @@
         
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(184, 50, 128, 0.3);
+            box-shadow: 0 10px 20px var(--hover-shadow);
         }
         
         button:active {
@@ -132,15 +169,16 @@
             margin-bottom: 30px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
-            text-align: left; /* Ensure left alignment for all user sections */
+            text-align: left;
         }
         
         .user-section h2 {
-            color: #b83280;
+            color: var(--secondary-color);
             margin-bottom: 25px;
             font-size: 1.8em;
             font-weight: 600;
-            text-align: left; /* Explicitly set left alignment for headers */
+            text-align: left;
+            transition: color 0.3s ease;
         }
         
         .question-item {
@@ -179,7 +217,6 @@
             min-height: 40px;
         }
         
-        /* Answer section */
         .answer-section {
             margin-top: 15px;
             padding-top: 0;
@@ -363,6 +400,30 @@
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
 
+        // Apply theme based on user data
+        function applyTheme(user) {
+            const body = document.body;
+            
+            // Remove existing theme classes
+            body.classList.remove('theme-blue', 'theme-green', 'theme-pink');
+            
+            // Apply theme based on user data
+            if (user && user.theme) {
+                switch(user.theme.toLowerCase()) {
+                    case 'blue':
+                        body.classList.add('theme-blue');
+                        break;
+                    case 'green':
+                        body.classList.add('theme-green');
+                        break;
+                    case 'pink':
+                    default:
+                        // Pink is the default theme (no class needed)
+                        break;
+                }
+            }
+        }
+
         // Initialize Firebase
         async function initFirebase() {
             try {
@@ -423,6 +484,9 @@
                 showMessage('error', 'Użytkownik nie istnieje w bazie danych');
                 return;
             }
+            
+            // Apply theme based on current user
+            applyTheme(user);
             
             currentUserId = userId;
             const assignedUser = users.find(u => u.id === assignments[userId]);
