@@ -550,7 +550,7 @@
             document.getElementById('userWelcome').textContent = `Witaj, ${user.name}!`;
             
             if (assignedUser) {
-                document.getElementById('assignmentInfo').textContent = `Wyślij pytanie do ${assignedUser.name}:`;
+                document.getElementById('assignmentInfo').textContent = `Wyślij pytanie do ${assignedUser.name} (${assignedUser.threadsNick}):`;
             } else {
                 document.getElementById('assignmentInfo').textContent = 'Brak dostępnego przydziału';
             }
