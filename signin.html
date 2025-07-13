@@ -144,13 +144,13 @@
 </head>
 <body>
     <div class="container">
-        <h1>Otrzymaj swój indywidualny Link</h1>
+        <h1>Zapisz się do "Nie masz psychy XXX"</h1>
         
         <div class="form-group">
             <input type="text" id="userNameInput" placeholder="Wpisz nazwę użytkownika">
         </div>
         
-        <button onclick="addUser()">Generuj Link</button>
+        <button onclick="addUser()">Zapisz mnie!</button>
         
         <div id="errorMessage" class="message error"></div>
         
@@ -203,7 +203,7 @@
             const name = nameInput.value.trim();
             
             if (!name) {
-                showError("Please enter your name");
+                showError("Wpisz nazwę!");
                 return;
             }
             
@@ -219,7 +219,7 @@
                 
                 // Check if name already exists
                 if (users.some(user => user.name.toLowerCase() === name.toLowerCase())) {
-                    showError("This name is already taken. Please choose another one.");
+                    showError("Taki użytkownik już istnieje. Wybierz inną nazwę.");
                     return;
                 }
                 
