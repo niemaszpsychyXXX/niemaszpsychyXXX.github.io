@@ -429,6 +429,19 @@
         .hidden {
             display: none;
         }
+
+        .user-access-notice {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: #1976d2;
+        }
+
+        .user-access-notice strong {
+            color: #0d47a1;
+        }
     </style>
 </head>
 <body>
@@ -450,6 +463,11 @@
     <div class="container hidden" id="adminPanel">
         <button class="logout-btn" onclick="logout()">Wyloguj</button>
         <h1>Anonimowe Pytania - Administrator</h1>
+
+        <!-- User access notice -->
+        <div class="user-access-notice" id="userAccessNotice" style="display: none;">
+            <strong>Tryb dostępu użytkownika:</strong> Strona została otwarta z linkiem użytkownika. Niektóre funkcje administratora mogą być ograniczone.
+        </div>
 
         <div class="section">
             <h2>Zarządzanie Wiadomościami</h2>
@@ -519,6 +537,7 @@
         let assignments = {};
         let questions = {};
         let adminPassword = null;
+        let isUserAccessMode = false;
         
         // Firebase configuration
         const firebaseConfig = {
@@ -529,6 +548,28 @@
             messagingSenderId: "381728790253",
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
+
+        // Check if URL contains user parameter
+        function checkUserAccess() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userParam = urlParams.get('user');
+            
+            if (userParam) {
+                // User access mode - bypass login
+                isUserAccessMode = true;
+                sessionStorage.setItem('userAccessMode', 'true');
+                sessionStorage.setItem('currentUserId', userParam);
+                return true;
+            }
+            
+            // Check if already in user access mode
+            if (sessionStorage.getItem('userAccessMode') === 'true') {
+                isUserAccessMode = true;
+                return true;
+            }
+            
+            return false;
+        }
 
         // Load admin password from secrets.json or Firebase
         async function loadAdminPassword() {
@@ -576,11 +617,27 @@
 
         // Check if user is logged in
         function checkLoginStatus() {
+            // Check for user access mode first
+            if (checkUserAccess()) {
+                showAdminPanel();
+                showUserAccessNotice();
+                return;
+            }
+            
+            // Regular admin login check
             const loginStatus = sessionStorage.getItem('adminLoggedIn');
             if (loginStatus === 'true') {
                 showAdminPanel();
             } else {
                 showLoginForm();
+            }
+        }
+
+        // Show user access notice
+        function showUserAccessNotice() {
+            const notice = document.getElementById('userAccessNotice');
+            if (notice && isUserAccessMode) {
+                notice.style.display = 'block';
             }
         }
 
@@ -621,6 +678,17 @@
         // Logout function
         function logout() {
             sessionStorage.removeItem('adminLoggedIn');
+            sessionStorage.removeItem('userAccessMode');
+            sessionStorage.removeItem('currentUserId');
+            isUserAccessMode = false;
+            
+            // If there's a user parameter in URL, remove it
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('user')) {
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+            
             showLoginForm();
         }
 
@@ -858,35 +926,4 @@
             assignmentsList.innerHTML = '';
             
             if (Object.keys(assignments).length === 0) {
-                assignmentsList.innerHTML = '<p style="text-align: center; color: #666;">Brak wygenerowanych przydziałów.</p>';
-                return;
-            }
-            
-            Object.keys(assignments).forEach(fromUserId => {
-                const fromUser = users.find(u => u.id === fromUserId);
-                const toUser = users.find(u => u.id === assignments[fromUserId]);
-                const userLink = generateUserLink(fromUserId);
-                
-                if (fromUser && toUser) {
-                    const assignmentItem = document.createElement('div');
-                    assignmentItem.className = 'assignment-item';
-                    assignmentItem.innerHTML = `
-                        <strong>${fromUser.name}</strong> → ${toUser.name}
-                        <div class="link-display">
-                            Link użytkownika: <span onclick="copyToClipboard('${userLink}')" style="cursor: pointer; color: #667eea; text-decoration: underline;">${userLink}</span>
-                        </div>
-                    `;
-                    assignmentsList.appendChild(assignmentItem);
-                }
-            });
-        }
-
-        // Initialize application
-        document.addEventListener('DOMContentLoaded', function() {
-            checkLoginStatus();
-            // Pre-load admin password for faster login
-            loadAdminPassword();
-        });
-    </script>
-</body>
-</html>
+                assignmentsList.innerHTML = '<p style="text-align: center; color: #666;">Brak wygenerowanych przydziałów.
