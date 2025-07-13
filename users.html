@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikacja Anonimowych Pytań</title>
     <style>
         * {
             margin: 0;
@@ -374,6 +373,7 @@
                     <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
                 </div>
                 <button onclick="sendQuestion()">Wyślij Pytanie</button>
+                <button onclick="changeRecipient()" style="margin-top: 10px; background: var(--secondary-color);">Zmień odbiorcę losowo</button>
                 <div id="questionMessage"></div>
             </div>
             
@@ -418,6 +418,37 @@
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
 
+        // Change recipient randomly
+        function changeRecipient() {
+            if (!currentUserId) {
+                showMessage('error', 'Najpierw załaduj swój profil');
+                return;
+            }
+        
+            // Filter out the current user from possible recipients
+            const possibleRecipients = users.filter(user => user.id !== currentUserId);
+            
+            if (possibleRecipients.length === 0) {
+                showMessage('error', 'Brak dostępnych odbiorców');
+                return;
+            }
+        
+            // Select random recipient
+            const randomIndex = Math.floor(Math.random() * possibleRecipients.length);
+            const newRecipient = possibleRecipients[randomIndex].id;
+            
+            // Update assignment in Firebase data
+            assignments[currentUserId] = newRecipient;
+            
+            // Save to Firebase
+            saveDataToFirebase();
+            
+            // Update UI
+            updateUI();
+            
+            showMessage('success', `Odbiorca zmieniony na: ${users.find(u => u.id === newRecipient).name}`);
+        }
+        
         // Pre-determine theme to avoid flash
         function preloadTheme() {
             const urlParams = new URLSearchParams(window.location.search);
