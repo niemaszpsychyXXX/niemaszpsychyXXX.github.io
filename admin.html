@@ -919,41 +919,41 @@
             });
         }
         
-        // Open user interface
-        function openUserInterface(userId) {
-            isAdmin = false;
-            // Hide admin access button for regular users
-            document.getElementById('adminAccessBtn').classList.add('hidden');
-            
-            currentUserId = userId;
-            const user = users.find(u => u.id === userId);
-            const assignedUser = users.find(u => u.id === assignments[userId]);
-            
-            if (!user) {
-                showAdminInterface();
-                return;
-            }
-            
-            document.getElementById('userWelcome').textContent = `Witaj, ${user.name}!`;
-            
-            if (assignedUser) {
-                document.getElementById('userInfo').textContent = `Możesz wysyłać anonimowe pytania do ${assignedUser.name}`;
-                document.getElementById('assignmentInfo').textContent = `Wyślij anonimowe pytanie do ${assignedUser.name}:`;
-            } else {
-                document.getElementById('userInfo').textContent = 'Brak przydziału - administrator musi wygenerować przydziały';
-                document.getElementById('assignmentInfo').textContent = 'Brak dostępnego przydziału';
-            }
-            
-            updateReceivedQuestions();
-            updateAskedQuestions();
-            
-            document.getElementById('admin-section').classList.add('hidden');
-            document.getElementById('user-section').classList.remove('hidden');
-            
-            // Update URL without reloading
-            const newUrl = window.location.href.split('?')[0] + '?user=' + userId;
-            window.history.pushState({ path: newUrl }, '', newUrl);
-        }
+       function openUserInterface(userId) {
+    isAdmin = false;
+    document.getElementById('adminAccessBtn').classList.add('hidden');
+    
+    currentUserId = userId;
+    const user = users.find(u => u.id === userId);
+    const assignedUser = users.find(u => u.id === assignments[userId]);
+    
+    if (!user) {
+        showAdminInterface();
+        return;
+    }
+    
+    // Ensure user section is visible before updating
+    document.getElementById('admin-section').classList.add('hidden');
+    document.getElementById('user-section').classList.remove('hidden');
+    
+    document.getElementById('userWelcome').textContent = `Witaj, ${user.name}!`;
+    
+    if (assignedUser) {
+        document.getElementById('userInfo').textContent = `Możesz wysyłać anonimowe pytania do ${assignedUser.name}`;
+        document.getElementById('assignmentInfo').textContent = `Wyślij anonimowe pytanie do ${assignedUser.name}:`;
+    } else {
+        document.getElementById('userInfo').textContent = 'Brak przydziału - administrator musi wygenerować przydziały';
+        document.getElementById('assignmentInfo').textContent = 'Brak dostępnego przydziału';
+    }
+    
+    // Now it's safe to update the questions
+    updateReceivedQuestions();
+    updateAskedQuestions();
+    
+    // Update URL without reloading
+    const newUrl = window.location.href.split('?')[0] + '?user=' + userId;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+}
         
         // Show admin interface
         function showAdminInterface() {
@@ -1008,51 +1008,58 @@
         }
         
         // Update received questions
-        function updateReceivedQuestions() {
-            const receivedQuestionsDiv = document.getElementById('receivedQuestions');
-            const userQuestions = questions[currentUserId] || [];
-            
-            if (userQuestions.length === 0) {
-                receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
-                return;
-            }
-            
-            receivedQuestionsDiv.innerHTML = '';
-            userQuestions.forEach((question, index) => {
-                const fromUser = users.find(u => u.id === question.from);
-                const questionItem = document.createElement('div');
-                questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
-                
-                let answerSection = '';
-                if (question.answer) {
-                    answerSection = `
-                        <div class="answer-section">
-                            <div class="answer-text">${question.answer.text}</div>
-                            ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>' : ''}
-                            <div class="answer-time">Odpowiedź: ${question.answer.timestamp}</div>
-                        </div>
-                    `;
-                } else {
-                    answerSection = `
-                        <div class="answer-form">
-                            <textarea class="answer-textarea" id="answer-${index}" placeholder="Napisz odpowiedź..."></textarea>
-                            <div style="margin-bottom: 5px;">
-                                <input type="checkbox" id="secret-${index}">
-                                <label for="secret-${index}">Odpowiedz bezpośrednio</label>
-                            </div>
-                            <button class="answer-btn" onclick="sendAnswer(${index})">Wyślij odpowiedź</button>
-                        </div>
-                    `;
-                }
-                
-                questionItem.innerHTML = `
-                    <div class="question-text">${question.text}</div>
-                    <div class="question-time">Otrzymano: ${question.timestamp}${fromUser ? ` (od ${fromUser.name})` : ''}</div>
-                    ${answerSection}
-                `;
-                receivedQuestionsDiv.appendChild(questionItem);
-            });
+       function updateReceivedQuestions() {
+    const receivedQuestionsDiv = document.getElementById('receivedQuestions');
+    
+    // Null check
+    if (!receivedQuestionsDiv) {
+        console.error('Received questions div not found');
+        return;
+    }
+
+    const userQuestions = questions[currentUserId] || [];
+    
+    if (userQuestions.length === 0) {
+        receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
+        return;
+    }
+    
+    receivedQuestionsDiv.innerHTML = '';
+    userQuestions.forEach((question, index) => {
+        const fromUser = users.find(u => u.id === question.from);
+        const questionItem = document.createElement('div');
+        questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
+        
+        let answerSection = '';
+        if (question.answer) {
+            answerSection = `
+                <div class="answer-section">
+                    <div class="answer-text">${question.answer.text}</div>
+                    ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>' : ''}
+                    <div class="answer-time">Odpowiedź: ${question.answer.timestamp}</div>
+                </div>
+            `;
+        } else {
+            answerSection = `
+                <div class="answer-form">
+                    <textarea class="answer-textarea" id="answer-${index}" placeholder="Napisz odpowiedź..."></textarea>
+                    <div style="margin-bottom: 5px;">
+                        <input type="checkbox" id="secret-${index}">
+                        <label for="secret-${index}">Odpowiedz bezpośrednio</label>
+                    </div>
+                    <button class="answer-btn" onclick="sendAnswer(${index})">Wyślij odpowiedź</button>
+                </div>
+            `;
         }
+        
+        questionItem.innerHTML = `
+            <div class="question-text">${question.text}</div>
+            <div class="question-time">Otrzymano: ${question.timestamp}${fromUser ? ` (od ${fromUser.name})` : ''}</div>
+            ${answerSection}
+        `;
+        receivedQuestionsDiv.appendChild(questionItem);
+    });
+}
         
         // Send answer to question
         function sendAnswer(questionIndex) {
@@ -1094,71 +1101,75 @@
             });
         });
 
-        // Update asked questions
-        // Update asked questions
-        function updateAskedQuestions() {
-            const askedQuestionsDiv = document.getElementById('askedQuestions');
-            
-            // Find all questions asked by this user
-            const userQuestions = [];
-            Object.keys(questions).forEach(targetUserId => {
-                const targetQuestions = questions[targetUserId] || [];
-                targetQuestions.forEach(question => {
-                    if (question.from === currentUserId) {
-                        const targetUser = users.find(u => u.id === targetUserId);
-                        userQuestions.push({
-                            ...question,
-                            targetUser: targetUser
-                        });
-                    }
+       function updateAskedQuestions() {
+    const askedQuestionsDiv = document.getElementById('askedQuestions');
+    
+    // Null check
+    if (!askedQuestionsDiv) {
+        console.error('Asked questions div not found');
+        return;
+    }
+
+    // Find all questions asked by this user
+    const userQuestions = [];
+    Object.keys(questions).forEach(targetUserId => {
+        const targetQuestions = questions[targetUserId] || [];
+        targetQuestions.forEach(question => {
+            if (question.from === currentUserId) {
+                const targetUser = users.find(u => u.id === targetUserId);
+                userQuestions.push({
+                    ...question,
+                    targetUser: targetUser
                 });
-            });
-            
-            if (userQuestions.length === 0) {
-                askedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>';
-                return;
             }
-            
-            // Sort by timestamp (newest first)
-            userQuestions.sort((a, b) => {
-                const timeA = a.timestamp ? new Date(a.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
-                const timeB = b.timestamp ? new Date(b.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
-                return timeB - timeA;
-            });
-            
-            askedQuestionsDiv.innerHTML = '';
-            userQuestions.forEach(question => {
-                const questionItem = document.createElement('div');
-                questionItem.className = 'your-question-item';
-                
-                let answerSection = '';
-                if (question.answer) {
-                    answerSection = `
-                        <div class="your-answer-section ${question.answer.secret ? 'secret-answer' : ''}">
-                            <div class="your-answer-item">
-                                <div class="your-answer-header">
-                                    <span class="your-answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
-                                    <span class="your-answer-time">${question.answer.timestamp || 'Brak daty'}</span>
-                                </div>
-                                <div class="your-answer-content">${question.answer.text || 'Brak treści odpowiedzi'}</div>
-                            </div>
+        });
+    });
+    
+    if (userQuestions.length === 0) {
+        askedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>';
+        return;
+    }
+    
+    // Sort by timestamp (newest first)
+    userQuestions.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
+        return timeB - timeA;
+    });
+    
+    askedQuestionsDiv.innerHTML = '';
+    userQuestions.forEach(question => {
+        const questionItem = document.createElement('div');
+        questionItem.className = 'your-question-item';
+        
+        let answerSection = '';
+        if (question.answer) {
+            answerSection = `
+                <div class="your-answer-section ${question.answer.secret ? 'secret-answer' : ''}">
+                    <div class="your-answer-item">
+                        <div class="your-answer-header">
+                            <span class="your-answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
+                            <span class="your-answer-time">${question.answer.timestamp || 'Brak daty'}</span>
                         </div>
-                    `;
-                } else {
-                    answerSection = '<div class="no-answer">(Brak odpowiedzi)</div>';
-                }
-                
-                questionItem.innerHTML = `
-                    <div class="your-question-header">
-                        <span class="your-question-author">Do: ${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
-                        <span class="your-question-time">${question.timestamp || 'Brak daty'}</span>
+                        <div class="your-answer-content">${question.answer.text || 'Brak treści odpowiedzi'}</div>
                     </div>
-                    <div class="your-question-content">${question.text || 'Brak treści pytania'}</div>
-                    ${answerSection}
-                `;
-                askedQuestionsDiv.appendChild(questionItem);
-            });
+                </div>
+            `;
+        } else {
+            answerSection = '<div class="no-answer">(Brak odpowiedzi)</div>';
         }
+        
+        questionItem.innerHTML = `
+            <div class="your-question-header">
+                <span class="your-question-author">Do: ${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
+                <span class="your-question-time">${question.timestamp || 'Brak daty'}</span>
+            </div>
+            <div class="your-question-content">${question.text || 'Brak treści pytania'}</div>
+            ${answerSection}
+        `;
+        askedQuestionsDiv.appendChild(questionItem);
+    });
+}
     </script>
 </body>
 </html>
