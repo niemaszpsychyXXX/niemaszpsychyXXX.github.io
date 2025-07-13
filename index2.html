@@ -12,8 +12,8 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Open Sans', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #ffeaf4 0%, #f8c2d4 50%, #f0a6c4 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #fccbe2;
             min-height: 100vh;
             padding: 40px 20px;
         }
@@ -25,14 +25,14 @@
         
         h1 {
             text-align: center;
-            color: #b83280;
+            color: #b6196e;
             margin-bottom: 40px;
             font-size: 2.5em;
             font-weight: 700;
         }
         
-        .user-section {
-            background: rgba(255, 255, 255, 0.95);
+        .qa-item {
+            background: #fafafa;
             border-radius: 20px;
             padding: 30px;
             margin-bottom: 30px;
@@ -40,34 +40,8 @@
             backdrop-filter: blur(10px);
         }
         
-        .user-section h2 {
-            color: #b83280;
+        .question-section {
             margin-bottom: 25px;
-            font-size: 1.8em;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-        }
-        
-        .user-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: #000;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 15px;
-            font-weight: bold;
-            font-size: 1.2em;
-        }
-        
-        .question-item {
-            background: transparent;
-            margin-bottom: 20px;
-            border: none;
-            padding: 0;
         }
         
         .question-header {
@@ -80,7 +54,7 @@
         
         .question-author {
             font-weight: 600;
-            color: #666;
+            color: #b1b1b1;
         }
         
         .question-time {
@@ -89,24 +63,18 @@
         
         .question-content {
             font-size: 16px;
-            line-height: 1.5;
-            color: #333;
-            margin-bottom: 15px;
+            line-height: 1.6;
+            color: #b1b1b1;
+            margin-bottom: 20px;
             white-space: pre-line;
             border-left: 4px solid #ddd;
             padding-left: 15px;
+            min-height: 40px;
         }
         
-        /* Answer section */
         .answer-section {
-            margin-top: 15px;
-            padding-top: 0;
-            border-top: none;
-        }
-        
-        .answer-item {
-            border-radius: 0;
-            margin-bottom: 0;
+            border-top: 1px solid #e0e0e0;
+            padding-top: 20px;
         }
         
         .answer-header {
@@ -127,11 +95,12 @@
         
         .answer-content {
             font-size: 16px;
-            line-height: 1.5;
+            line-height: 1.6;
             color: #333;
             white-space: pre-line;
-            border-left: 4px solid #333;
+            border-left: 4px solid #090909;
             padding-left: 15px;
+            min-height: 40px;
         }
         
         /* Status messages */
@@ -146,7 +115,6 @@
         }
         
         .success-message {
-            background: rgba(46, 213, 115, 0.1);
             color: #2ed573;
             border: 1px solid rgba(46, 213, 115, 0.3);
         }
@@ -200,19 +168,9 @@
                 margin-bottom: 30px;
             }
             
-            .user-section {
+            .qa-item {
                 padding: 20px;
                 margin-bottom: 20px;
-            }
-            
-            .user-section h2 {
-                font-size: 1.5em;
-            }
-            
-            .user-avatar {
-                width: 40px;
-                height: 40px;
-                font-size: 1em;
             }
         }
     </style>
@@ -254,6 +212,7 @@
         let questionsRef = null;
         let usersRef = null;
         let usersData = {};
+        let currentQuestions = [];
 
         function initFirebase() {
             try {
@@ -285,7 +244,7 @@
                     // Then load questions
                     questionsRef.on('value', (snapshot) => {
                         const questionsData = snapshot.val() || {};
-                        displayQuestionsFromFirebase(questionsData);
+                        processQuestionsFromFirebase(questionsData);
                     }, (error) => {
                         console.error("Firebase read failed:", error);
                         document.getElementById('connectionStatus').innerHTML = 
@@ -304,105 +263,118 @@
             }
         }
 
-        // Display questions from Firebase
-        function displayQuestionsFromFirebase(questionsData) {
-            const questionsList = document.getElementById('questionsList');
+        // Process questions from Firebase and update the display
+        function processQuestionsFromFirebase(questionsData) {
+            const newQuestions = [];
             
-            if (!questionsData || Object.keys(questionsData).length === 0) {
-                questionsList.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań w bazie danych.</p>';
-                return;
-            }
-            
-            questionsList.innerHTML = '';
-            
-            // Group questions by who asked them (question.from)
-            const questionsByAsker = {};
-            
-            // Process all questions and group by asker
             Object.keys(questionsData).forEach(userId => {
                 const userQuestions = questionsData[userId] || [];
                 
                 userQuestions.forEach(question => {
-                    // Skip questions with secret answers
-                    if (question.answer && question.answer.secret) {
+                    // Skip questions without answers
+                    if (!question.answer) {
                         return;
                     }
                     
-                    const askerId = question.from;
-                    if (!questionsByAsker[askerId]) {
-                        questionsByAsker[askerId] = [];
+                    // Skip questions with secret answers
+                    if (question.answer.secret) {
+                        return;
                     }
                     
-                    // Add the question with info about who it was asked to
-                    questionsByAsker[askerId].push({
+                    // Skip questions with empty answer text
+                    if (!question.answer.text || question.answer.text.trim() === '') {
+                        return;
+                    }
+                    
+                    // Add the question with info about who asked and who answered
+                    newQuestions.push({
                         ...question,
                         askedTo: userId,
-                        askedToName: usersData[userId] || `Użytkownik (${userId.substring(0, 6)}...)`
+                        askedToName: usersData[userId] || `Użytkownik (${userId.substring(0, 6)}...)`,
+                        askedByName: usersData[question.from] || `Użytkownik (${question.from.substring(0, 6)}...)`,
+                        // Convert timestamp to milliseconds for sorting
+                        sortTime: question.answer.timestamp ? 
+                            new Date(question.answer.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0
                     });
                 });
             });
             
-            // Display questions grouped by asker
-            Object.keys(questionsByAsker).forEach(askerId => {
-                const askerName = usersData[askerId] || `Użytkownik (${askerId.substring(0, 6)}...)`;
-                const askerQuestions = questionsByAsker[askerId];
+            // Check if there are any questions to display
+            if (newQuestions.length === 0) {
+                if (currentQuestions.length === 0) {
+                    document.getElementById('questionsList').innerHTML = '<p style="text-align: center; color: #666;">Brak odpowiedzianych pytań.</p>';
+                }
+                return;
+            }
+            
+            // Sort new questions by answer timestamp (newest first)
+            newQuestions.sort((a, b) => b.sortTime - a.sortTime);
+            
+            // Check if questions have changed
+            if (JSON.stringify(newQuestions) !== JSON.stringify(currentQuestions)) {
+                currentQuestions = newQuestions;
+                updateQuestionsDisplay();
+            }
+        }
+        
+        // Update the questions display without scrolling
+        function updateQuestionsDisplay() {
+            const questionsList = document.getElementById('questionsList');
+            
+            // If this is the first load
+            if (questionsList.innerHTML === '<p style="text-align: center; color: #666;">Ładowanie pytań...</p>' || 
+                questionsList.innerHTML === '<p style="text-align: center; color: #666;">Brak odpowiedzianych pytań.</p>') {
+                questionsList.innerHTML = '';
+            }
+            
+            // Remember scroll position
+            const scrollPosition = window.scrollY;
+            const containerHeight = document.querySelector('.container').scrollHeight;
+            
+            // Create a document fragment for better performance
+            const fragment = document.createDocumentFragment();
+            
+            // Add all questions to the fragment
+            currentQuestions.forEach(question => {
+                const qaItem = document.createElement('div');
+                qaItem.className = 'qa-item';
                 
-                if (askerQuestions.length === 0) return;
-                
-                const userSection = document.createElement('div');
-                userSection.className = 'user-section';
-                
-                const userHeader = document.createElement('h2');
-                userHeader.innerHTML = `
-                    <div class="user-avatar">${askerName.charAt(0).toUpperCase()}</div>
-                    ${askerName}
-                `;
-                
-                userSection.appendChild(userHeader);
-                
-                // Sort questions by timestamp (newest first)
-                askerQuestions.sort((a, b) => {
-                    const timeA = a.timestamp ? new Date(a.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
-                    const timeB = b.timestamp ? new Date(b.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
-                    return timeB - timeA;
-                });
-                
-                askerQuestions.forEach(question => {
-                    const questionItem = document.createElement('div');
-                    questionItem.className = 'question-item';
-                    
-                    let answerHtml = '';
-                    if (question.answer) {
-                        answerHtml = `
-                            <div class="answer-section">
-                                <div class="answer-item">
-                                    <div class="answer-header">
-                                        <span class="answer-author">${question.askedToName}</span>
-                                        <span class="answer-time">${question.answer.timestamp || 'Brak daty'}</span>
-                                    </div>
-                                    <div class="answer-content">${question.answer.text || 'Brak odpowiedzi'}</div>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    
-                    questionItem.innerHTML = `
+                qaItem.innerHTML = `
+                    <div class="question-section">
                         <div class="question-header">
-                            <span class="question-author">Do: ${question.askedToName}</span>
+                            <span class="question-author">${question.askedByName}</span>
                             <span class="question-time">${question.timestamp || 'Brak daty'}</span>
                         </div>
                         <div class="question-content">${question.text || 'Brak treści pytania'}</div>
-                        ${answerHtml}
-                    `;
+                    </div>
                     
-                    userSection.appendChild(questionItem);
-                });
+                    <div class="answer-section">
+                        <div class="answer-header">
+                            <span class="answer-author">${question.askedToName}</span>
+                            <span class="answer-time">${question.answer.timestamp || 'Brak daty'}</span>
+                        </div>
+                        <div class="answer-content">${question.answer.text}</div>
+                    </div>
+                `;
                 
-                // Only add user section if there are visible questions
-                if (userSection.children.length > 1) { // More than just the header
-                    questionsList.appendChild(userSection);
-                }
+                // Prepend new questions (add to top)
+                fragment.insertBefore(qaItem, fragment.firstChild);
             });
+            
+            // Replace the content
+            questionsList.innerHTML = '';
+            questionsList.appendChild(fragment);
+            
+            // Calculate how much the page has grown
+            const newContainerHeight = document.querySelector('.container').scrollHeight;
+            const heightDifference = newContainerHeight - containerHeight;
+            
+            // Adjust scroll position to maintain relative position
+            if (heightDifference > 0) {
+                window.scrollTo(0, scrollPosition + heightDifference);
+            } else {
+                window.scrollTo(0, scrollPosition);
+            }
         }
         
         // Initialize the page
