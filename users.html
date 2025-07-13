@@ -634,11 +634,6 @@
                 receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
                 return;
             }
-
-            // Sort questions by timestamp (newest first)
-            userQuestions = userQuestions.slice().sort((a, b) => {
-                return new Date(b.timestamp) - new Date(a.timestamp);
-            });
             
             // Save current form states before updating
             const currentFormStates = {};
