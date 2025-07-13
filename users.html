@@ -703,7 +703,7 @@
                     <div class="question-content">${question.text}</div>
                     ${answerSection}
                 `;
-                receivedQuestionsDiv.appendChild(questionItem);
+                receivedQuestionsDiv.prepend(questionItem);
                 
                 // Restore form state after creating the element
                 if (currentFormStates[displayIndex] && !question.answer) {
