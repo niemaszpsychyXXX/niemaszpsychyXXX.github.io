@@ -658,6 +658,14 @@
 
         // Update received questions with form state preservation and proper sorting (newest first)
         function updateReceivedQuestions() {
+            
+            // Save which textarea had focus before update
+            const focusedElement = document.activeElement;
+            let focusedIndex = null;
+            if (focusedElement && focusedElement.id.startsWith('answer-')) {
+                focusedIndex = focusedElement.id.replace('answer-', '');
+            }
+                
             const receivedQuestionsDiv = document.getElementById('receivedQuestions');
             const userQuestions = questions[currentUserId] || [];
             
@@ -749,6 +757,17 @@
                     }
                 }
             });
+
+            // Restore focus after update
+            if (focusedIndex !== null) {
+                const newTextarea = document.getElementById(`answer-${focusedIndex}`);
+                if (newTextarea) {
+                    newTextarea.focus();
+                    // Restore cursor position
+                    newTextarea.selectionStart = focusedElement.selectionStart;
+                    newTextarea.selectionEnd = focusedElement.selectionEnd;
+                }
+            }
         }
 
         // Send answer to question
