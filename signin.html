@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Your Anonymous Questions Link</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2em;
+            font-weight: 300;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .user-link {
+            font-size: 18px;
+            word-break: break-all;
+            margin: 15px 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .copy-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #138496;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+            display: none;
+        }
+
+        .success {
+            background: #2ed573;
+            color: white;
+        }
+
+        .error {
+            background: #ff4757;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Get Your Anonymous Questions Link</h1>
+        
+        <div class="form-group">
+            <input type="text" id="userNameInput" placeholder="Enter your name">
+        </div>
+        
+        <button onclick="addUser()">Generate My Link</button>
+        
+        <div id="errorMessage" class="message error"></div>
+        
+        <div id="result" class="result">
+            <h3>Your anonymous questions link:</h3>
+            <div id="userLink" class="user-link"></div>
+            <button class="copy-btn" onclick="copyToClipboard()">Copy Link</button>
+            <p>Share this link with friends so they can ask you anonymous questions!</p>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM",
+            authDomain: "nie-masz-psychy.firebaseapp.com",
+            projectId: "nie-masz-psychy",
+            storageBucket: "nie-masz-psychy.firebasestorage.app",
+            messagingSenderId: "381728790253",
+            appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
+        };
+
+        // Initialize Firebase
+        let app = null;
+        let db = null;
+        
+        try {
+            app = firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+        } catch (error) {
+            showError("Failed to connect to database. Please try again later.");
+        }
+
+        // Generate unique user ID
+        function generateUserId() {
+            return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        // Generate 6-digit user code
+        function generateUserCode() {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        }
+        
+        // Add user to database
+        async function addUser() {
+            const nameInput = document.getElementById('userNameInput');
+            const name = nameInput.value.trim();
+            
+            if (!name) {
+                showError("Please enter your name");
+                return;
+            }
+            
+            if (!db) {
+                showError("Database connection error. Please try again later.");
+                return;
+            }
+            
+            try {
+                // Get current users to check for duplicates
+                const snapshot = await db.ref('users').once('value');
+                const users = snapshot.val() || [];
+                
+                // Check if name already exists
+                if (users.some(user => user.name.toLowerCase() === name.toLowerCase())) {
+                    showError("This name is already taken. Please choose another one.");
+                    return;
+                }
+                
+                // Generate user data
+                const userId = generateUserId();
+                const userCode = generateUserCode();
+                const newUser = {
+                    id: userId,
+                    name: name,
+                    code: userCode
+                };
+                
+                // Add to database
+                await db.ref('users').set([...users, newUser]);
+                
+                // Update userCodes reference
+                const codesSnapshot = await db.ref('userCodes').once('value');
+                const userCodes = codesSnapshot.val() || {};
+                userCodes[userCode] = userId;
+                await db.ref('userCodes').set(userCodes);
+                
+                // Display the result
+                showUserLink(userCode);
+                
+            } catch (error) {
+                console.error("Error adding user:", error);
+                showError("An error occurred. Please try again.");
+            }
+        }
+        
+        // Show user's link
+        function showUserLink(code) {
+            const baseUrl = window.location.href.replace('signin.html', 'users.html');
+            const shortLink = `${baseUrl}?code=${code}`;
+            
+            document.getElementById('userLink').textContent = shortLink;
+            document.getElementById('result').style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+        
+        // Show error message
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+        }
+        
+        // Copy link to clipboard
+        function copyToClipboard() {
+            const link = document.getElementById('userLink').textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                alert('Link copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy link');
+            });
+        }
+    </script>
+</body>
+</html>
