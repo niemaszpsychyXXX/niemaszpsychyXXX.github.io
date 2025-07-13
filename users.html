@@ -625,102 +625,126 @@
             }
         }
 
-        // Update received questions with form state preservation
-// Update received questions with form state preservation
-function updateReceivedQuestions() {
-    const receivedQuestionsDiv = document.getElementById('receivedQuestions');
-    const userQuestions = questions[currentUserId] || [];
-    
-    if (userQuestions.length === 0) {
-        receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
-        return;
-    }
-    
-    // Create a sorted copy of the questions array (newest first)
-    // Sort by timestamp - convert to Date objects for proper comparison
-    const sortedQuestions = [...userQuestions].sort((a, b) => {
-        const dateA = new Date(a.timestamp);
-        const dateB = new Date(b.timestamp);
-        return dateB - dateA; // Newest first (descending order)
-    });
-    
-    // Save current form states before updating
-    const currentFormStates = {};
-    sortedQuestions.forEach((question, index) => {
-        const answerTextarea = document.getElementById(`answer-${index}`);
-        const secretCheckbox = document.getElementById(`secret-${index}`);
-        
-        if (answerTextarea) {
-            currentFormStates[index] = {
-                text: answerTextarea.value,
-                secret: secretCheckbox ? secretCheckbox.checked : false
-            };
-        }
-    });
-    
-    receivedQuestionsDiv.innerHTML = '';
-    sortedQuestions.forEach((question, index) => {
-        const fromUser = users.find(u => u.id === question.from);
-        const questionItem = document.createElement('div');
-        questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
-        
-        let answerSection = '';
-        if (question.answer) {
-            answerSection = `
-                <div class="answer-section">
-                    <div class="answer-item">
-                        <div class="answer-header">
-                            <span class="answer-author">Ty</span>
-                            <span class="answer-time">${question.answer.timestamp}</span>
-                        </div>
-                        <div class="answer-content">${question.answer.text}</div>
-                        ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Sekret)</div>' : ''}
-                    </div>
-                </div>
-            `;
-        } else {
-            answerSection = `
-                <div class="answer-form">
-                    <textarea class="answer-textarea" id="answer-${index}" placeholder="Napisz odpowiedź..."></textarea>
-                    <div style="margin-bottom: 5px;">
-                        <input type="checkbox" id="secret-${index}">
-                        <label for="secret-${index}">👀 SEKRET 👀</label>
-                    </div>
-                    <button class="answer-btn" onclick="sendAnswer(${index})">Wyślij odpowiedź</button>
-                </div>
-            `;
-        }
-        
-        questionItem.innerHTML = `
-            <div class="question-header">
-                <span class="question-author">${fromUser ? fromUser.name : 'Nieznany użytkownik'}</span>
-                <span class="question-time">${question.timestamp}</span>
-            </div>
-            <div class="question-content">${question.text}</div>
-            ${answerSection}
-        `;
-        receivedQuestionsDiv.appendChild(questionItem);
-        
-        // Restore form state after creating the element
-        if (currentFormStates[index] && !question.answer) {
-            const answerTextarea = document.getElementById(`answer-${index}`);
-            const secretCheckbox = document.getElementById(`secret-${index}`);
+        // Update received questions with form state preservation and proper sorting
+        function updateReceivedQuestions() {
+            const receivedQuestionsDiv = document.getElementById('receivedQuestions');
+            const userQuestions = questions[currentUserId] || [];
             
-            if (answerTextarea) {
-                answerTextarea.value = currentFormStates[index].text;
+            if (userQuestions.length === 0) {
+                receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
+                return;
             }
-            if (secretCheckbox) {
-                secretCheckbox.checked = currentFormStates[index].secret;
-            }
+            
+            // Create array of questions with original indices for proper answer handling
+            const questionsWithIndices = userQuestions.map((question, originalIndex) => ({
+                ...question,
+                originalIndex: originalIndex
+            }));
+            
+            // Sort by timestamp (newest first)
+            questionsWithIndices.sort((a, b) => {
+                const dateA = new Date(a.timestamp);
+                const dateB = new Date(b.timestamp);
+                return dateB - dateA; // Newest first (descending order)
+            });
+            
+            // Save current form states before updating
+            const currentFormStates = {};
+            questionsWithIndices.forEach((question, displayIndex) => {
+                const answerTextarea = document.getElementById(`answer-${displayIndex}`);
+                const secretCheckbox = document.getElementById(`secret-${displayIndex}`);
+                
+                if (answerTextarea) {
+                    currentFormStates[displayIndex] = {
+                        text: answerTextarea.value,
+                        secret: secretCheckbox ? secretCheckbox.checked : false
+                    };
+                }
+            });
+            
+            receivedQuestionsDiv.innerHTML = '';
+            questionsWithIndices.forEach((question, displayIndex) => {
+                const fromUser = users.find(u => u.id === question.from);
+                const questionItem = document.createElement('div');
+                questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
+                
+                let answerSection = '';
+                if (question.answer) {
+                    answerSection = `
+                        <div class="answer-section">
+                            <div class="answer-item">
+                                <div class="answer-header">
+                                    <span class="answer-author">Ty</span>
+                                    <span class="answer-time">${question.answer.timestamp}</span>
+                                </div>
+                                <div class="answer-content">${question.answer.text}</div>
+                                ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Sekret)</div>' : ''}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    answerSection = `
+                        <div class="answer-form">
+                            <textarea class="answer-textarea" id="answer-${displayIndex}" placeholder="Napisz odpowiedź..."></textarea>
+                            <div style="margin-bottom: 5px;">
+                                <input type="checkbox" id="secret-${displayIndex}">
+                                <label for="secret-${displayIndex}">👀 SEKRET 👀</label>
+                            </div>
+                            <button class="answer-btn" onclick="sendAnswer(${question.originalIndex})">Wyślij odpowiedź</button>
+                        </div>
+                    `;
+                }
+                
+                questionItem.innerHTML = `
+                    <div class="question-header">
+                        <span class="question-author">${fromUser ? fromUser.name : 'Nieznany użytkownik'}</span>
+                        <span class="question-time">${question.timestamp}</span>
+                    </div>
+                    <div class="question-content">${question.text}</div>
+                    ${answerSection}
+                `;
+                receivedQuestionsDiv.appendChild(questionItem);
+                
+                // Restore form state after creating the element
+                if (currentFormStates[displayIndex] && !question.answer) {
+                    const answerTextarea = document.getElementById(`answer-${displayIndex}`);
+                    const secretCheckbox = document.getElementById(`secret-${displayIndex}`);
+                    
+                    if (answerTextarea) {
+                        answerTextarea.value = currentFormStates[displayIndex].text;
+                    }
+                    if (secretCheckbox) {
+                        secretCheckbox.checked = currentFormStates[displayIndex].secret;
+                    }
+                }
+            });
         }
-    });
-}
 
         // Send answer to question
         function sendAnswer(questionIndex) {
-            const answerTextarea = document.getElementById(`answer-${questionIndex}`);
-            const answerText = answerTextarea.value.trim();
-            const isSecret = document.getElementById(`secret-${questionIndex}`).checked;
+            const answerTextarea = document.querySelector(`textarea[id^="answer-"]`);
+            const secretCheckbox = document.querySelector(`input[id^="secret-"]:checked`);
+            
+            // Find the correct textarea and checkbox for this question
+            const allTextareas = document.querySelectorAll('textarea[id^="answer-"]');
+            const allCheckboxes = document.querySelectorAll('input[id^="secret-"]');
+            
+            let answerText = '';
+            let isSecret = false;
+            
+            // Find the textarea that contains text (assuming user is answering one question at a time)
+            for (let textarea of allTextareas) {
+                if (textarea.value.trim()) {
+                    answerText = textarea.value.trim();
+                    // Get the corresponding checkbox
+                    const textareaIndex = textarea.id.replace('answer-', '');
+                    const checkbox = document.getElementById(`secret-${textareaIndex}`);
+                    if (checkbox) {
+                        isSecret = checkbox.checked;
+                    }
+                    break;
+                }
+            }
             
             if (!answerText) {
                 alert('Proszę wpisać odpowiedź');
