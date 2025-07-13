@@ -138,21 +138,22 @@
         }
 
         .theme-dropdown-content {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
             background: white;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-            z-index: 10;
             margin-top: 5px;
-            display: none;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(-10px);
         }
 
         .theme-dropdown-content.show {
-            display: block;
+            max-height: 200px;
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .theme-option {
