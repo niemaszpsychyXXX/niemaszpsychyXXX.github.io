@@ -341,11 +341,18 @@
         function updateUI() {
             // Check if we have a valid user ID
             const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('user');
+            let userId = urlParams.get('user');
             
+            // If no user ID in URL, check for code
             if (!userId) {
-                showMessage('error', 'Brak identyfikatora użytkownika w URL');
-                return;
+                const userCode = urlParams.get('code');
+                if (userCode) {
+                    // Find user by code
+                    const user = users.find(u => u.code === userCode);
+                    if (user) {
+                        userId = user.id;
+                    }
+                }
             }
             
             const user = users.find(u => u.id === userId);
