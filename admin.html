@@ -436,6 +436,13 @@
         .messages-btn:hover {
             background: #138496;
         }
+
+        <div class="questions-section">
+            <h2>Twoje Pytania i Odpowiedzi</h2>
+            <div id="askedQuestions">
+                <p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>
+            </div>
+        </div>
     </style>
 </head>
 <body>
@@ -531,6 +538,13 @@
                     <div id="receivedQuestions">
                         <p style="text-align: center; color: #666;">Brak pytań.</p>
                     </div>
+                </div>
+            </div>
+
+            <div class="questions-section">
+                <h2>Twoje Pytania i Odpowiedzi</h2>
+                <div id="askedQuestions">
+                    <p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>
                 </div>
             </div>
         </div>
@@ -659,6 +673,7 @@
             
             if (currentUserId) {
                 updateReceivedQuestions();
+                updateAskedQuestions(); // Add this line
             }
         }
 
@@ -831,6 +846,7 @@
             }
             
             updateReceivedQuestions();
+            updateAskedQuestions();
             
             document.getElementById('admin-section').classList.add('hidden');
             document.getElementById('user-section').classList.remove('hidden');
@@ -978,6 +994,60 @@
                 }
             });
         });
+
+        // Update asked questions
+        function updateAskedQuestions() {
+            const askedQuestionsDiv = document.getElementById('askedQuestions');
+            
+            // Find all questions asked by this user
+            const userQuestions = [];
+            Object.keys(questions).forEach(targetUserId => {
+                const targetQuestions = questions[targetUserId] || [];
+                targetQuestions.forEach(question => {
+                    if (question.from === currentUserId) {
+                        const targetUser = users.find(u => u.id === targetUserId);
+                        userQuestions.push({
+                            ...question,
+                            targetUser: targetUser
+                        });
+                    }
+                });
+            });
+            
+            if (userQuestions.length === 0) {
+                askedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>';
+                return;
+            }
+            
+            // Sort by timestamp (newest first)
+            userQuestions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            askedQuestionsDiv.innerHTML = '';
+            userQuestions.forEach(question => {
+                const questionItem = document.createElement('div');
+                questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
+                
+                let answerSection = '';
+                if (question.answer) {
+                    answerSection = `
+                        <div class="answer-section ${question.answer.secret ? 'secret-answer' : ''}">
+                            <div class="answer-text">${question.answer.text}</div>
+                            ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>' : ''}
+                            <div class="answer-time">Odpowiedź: ${question.answer.timestamp}</div>
+                        </div>
+                    `;
+                } else {
+                    answerSection = '<div class="answer-section" style="color: #888;">(Brak odpowiedzi)</div>';
+                }
+                
+                questionItem.innerHTML = `
+                    <div class="question-text">${question.text}</div>
+                    <div class="question-time">Wysłano: ${question.timestamp}${question.targetUser ? ` (do ${question.targetUser.name})` : ''}</div>
+                    ${answerSection}
+                `;
+                askedQuestionsDiv.appendChild(questionItem);
+            });
+        }
     </script>
 </body>
 </html>
