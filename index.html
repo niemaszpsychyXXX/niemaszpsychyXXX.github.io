@@ -212,6 +212,7 @@
         let questionsRef = null;
         let usersRef = null;
         let usersData = {};
+        let lastDisplayedData = null;
 
         function initFirebase() {
             try {
@@ -271,8 +272,6 @@
                 return;
             }
             
-            questionsList.innerHTML = '';
-            
             // Collect all questions with answers
             const allQuestions = [];
             
@@ -318,6 +317,18 @@
                 return timeB - timeA;
             });
             
+            // Check if data has actually changed
+            const currentDataHash = JSON.stringify(allQuestions);
+            if (currentDataHash === lastDisplayedData) {
+                return; // No changes, don't update DOM
+            }
+            
+            // Save current scroll position
+            const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+            
+            // Clear the list
+            questionsList.innerHTML = '';
+            
             // Display all questions chronologically
             allQuestions.forEach(question => {
                 const qaItem = document.createElement('div');
@@ -343,6 +354,14 @@
                 
                 questionsList.appendChild(qaItem);
             });
+            
+            // Restore scroll position after DOM update
+            requestAnimationFrame(() => {
+                window.scrollTo(0, scrollPosition);
+            });
+            
+            // Update the last displayed data hash
+            lastDisplayedData = currentDataHash;
         }
         
         // Initialize the page
