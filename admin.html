@@ -453,8 +453,8 @@
 
         <div class="section">
             <h2>Zarządzanie Wiadomościami</h2>
-            <button class="messages-btn" onclick="window.open('/index.html', '_blank')">Przejdź do Strony Wiadomości</button>
-            <p style="margin-top: 10px;">Adres strony wiadomości: <code>https://yourdomain.com/index.html</code></p>
+            <button class="messages-btn" onclick="window.open('/messages.html', '_blank')">Przejdź do Strony Wiadomości</button>
+            <p style="margin-top: 10px;">Adres strony wiadomości: <code>https://yourdomain.com/messages.html</code></p>
         </div>
         
         <div class="section">
@@ -475,6 +475,19 @@
                 </div>
                 <br>
                 <button class="save-btn" onclick="initFirebase()">Połącz z Firebase</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Konfiguracja Hasła Administratora</h2>
+            <div class="firebase-config">
+                <h3>Zmień hasło administratora</h3>
+                <input type="password" id="newAdminPassword" placeholder="Nowe hasło administratora">
+                <div class="config-help">
+                    Hasło jest przechowywane w Firebase. Zmiana hasła będzie wymagała ponownego logowania.
+                </div>
+                <br>
+                <button class="save-btn" onclick="changeAdminPassword()">Zmień Hasło</button>
             </div>
         </div>
         
@@ -499,15 +512,13 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
-        // Admin password - change this to your desired password
-        const ADMIN_PASSWORD = 'admin123';
-        
         // Global variables accessible by all scripts
         let app = null;
         let db = null;
         let users = [];
         let assignments = {};
         let questions = {};
+        let adminPassword = null;
         
         // Firebase configuration
         const firebaseConfig = {
@@ -518,6 +529,50 @@
             messagingSenderId: "381728790253",
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
+
+        // Load admin password from secrets.json or Firebase
+        async function loadAdminPassword() {
+            try {
+                // First try to load from secrets.json
+                const response = await fetch('/secrets.json');
+                if (response.ok) {
+                    const secrets = await response.json();
+                    adminPassword = secrets.admin_password;
+                    console.log('Admin password loaded from secrets.json');
+                    return adminPassword;
+                }
+            } catch (error) {
+                console.log('secrets.json not found, trying Firebase...');
+            }
+
+            // If secrets.json not available, try Firebase
+            try {
+                if (!db) {
+                    app = firebase.initializeApp(firebaseConfig);
+                    db = firebase.database();
+                }
+                
+                const snapshot = await firebase.database().ref('/config/admin_password').once('value');
+                if (snapshot.exists()) {
+                    adminPassword = snapshot.val();
+                    console.log('Admin password loaded from Firebase');
+                    return adminPassword;
+                } else {
+                    // Set default password in Firebase if not exists
+                    adminPassword = 'admin123';
+                    await firebase.database().ref('/config/admin_password').set(adminPassword);
+                    console.log('Default admin password set in Firebase');
+                    showMessage('warning', 'Domyślne hasło administratora zostało ustawione w Firebase. Zmień je w konfiguracji!');
+                    return adminPassword;
+                }
+            } catch (error) {
+                console.error('Error loading password from Firebase:', error);
+                // Fallback to default password
+                adminPassword = 'admin123';
+                showMessage('error', 'Nie udało się załadować hasła. Używane jest domyślne hasło: admin123');
+                return adminPassword;
+            }
+        }
 
         // Check if user is logged in
         function checkLoginStatus() {
@@ -543,11 +598,18 @@
         }
 
         // Login function
-        function login() {
+        async function login() {
             const password = document.getElementById('adminPassword').value;
             const errorDiv = document.getElementById('loginError');
             
-            if (password === ADMIN_PASSWORD) {
+            // Load admin password if not already loaded
+            if (!adminPassword) {
+                errorDiv.textContent = 'Ładowanie konfiguracji...';
+                await loadAdminPassword();
+                errorDiv.textContent = '';
+            }
+            
+            if (password === adminPassword) {
                 sessionStorage.setItem('adminLoggedIn', 'true');
                 showAdminPanel();
                 errorDiv.textContent = '';
@@ -570,6 +632,36 @@
                 }
             });
         });
+
+        // Change admin password
+        async function changeAdminPassword() {
+            const newPassword = document.getElementById('newAdminPassword').value.trim();
+            
+            if (newPassword === '') {
+                alert('Proszę wpisać nowe hasło');
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                alert('Hasło musi mieć co najmniej 6 znaków');
+                return;
+            }
+            
+            if (!db) {
+                alert('Najpierw połącz się z Firebase');
+                return;
+            }
+            
+            try {
+                await firebase.database().ref('/config/admin_password').set(newPassword);
+                adminPassword = newPassword;
+                document.getElementById('newAdminPassword').value = '';
+                showMessage('success', 'Hasło administratora zostało zmienione pomyślnie!');
+            } catch (error) {
+                console.error('Error changing admin password:', error);
+                showMessage('error', 'Błąd zmiany hasła: ' + error.message);
+            }
+        }
 
         // Initialize Firebase
         window.initFirebase = async function() {
@@ -792,6 +884,8 @@
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
             checkLoginStatus();
+            // Pre-load admin password for faster login
+            loadAdminPassword();
         });
     </script>
 </body>
