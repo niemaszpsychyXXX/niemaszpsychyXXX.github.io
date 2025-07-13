@@ -506,8 +506,7 @@
         
         // Generate user link
         function generateUserLink(userId) {
-            const baseUrl = window.location.origin + window.location.pathname.replace('/admin.html', '');
-            return baseUrl + '/user=' + userId;
+            return window.location.href.replace('admin.html', 'users.html') + '?user=' + userId;
         }
         
         // Copy to clipboard
