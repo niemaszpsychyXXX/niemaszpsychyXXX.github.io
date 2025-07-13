@@ -12,7 +12,18 @@
         }
         
         :root {
-            /* Default Pink Theme */
+            /* Neutral default - no theme colors until determined */
+            --primary-bg: #f5f5f5;
+            --primary-color: #666;
+            --secondary-color: #666;
+            --gradient-start: #666;
+            --gradient-end: #666;
+            --hover-shadow: rgba(102, 102, 102, 0.3);
+            --focus-shadow: rgba(102, 102, 102, 0.1);
+        }
+        
+        /* Pink Theme */
+        .theme-pink {
             --primary-bg: #fccbe2;
             --primary-color: #b6196e;
             --secondary-color: #b83280;
@@ -50,6 +61,13 @@
             min-height: 100vh;
             padding: 40px 20px;
             transition: background-color 0.3s ease;
+            /* Hide content until theme is applied */
+            opacity: 0;
+            transition: opacity 0.3s ease, background-color 0.3s ease;
+        }
+        
+        body.theme-loaded {
+            opacity: 1;
         }
         
         .container {
@@ -400,6 +418,27 @@
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
 
+        // Pre-determine theme to avoid flash
+        function preloadTheme() {
+            const urlParams = new URLSearchParams(window.location.search);
+            let userId = urlParams.get('user');
+            
+            if (!userId) {
+                const userCode = urlParams.get('code');
+                if (userCode) {
+                    // We'll need to wait for Firebase data to find user by code
+                    return;
+                }
+            }
+            
+            // If we have a userId, we can try to get theme from localStorage cache
+            const cachedTheme = localStorage.getItem(`user_theme_${userId}`);
+            if (cachedTheme) {
+                applyTheme({ theme: cachedTheme });
+                document.body.classList.add('theme-loaded');
+            }
+        }
+
         // Apply theme based on user data
         function applyTheme(user) {
             const body = document.body;
@@ -409,7 +448,8 @@
             
             // Apply theme based on user data
             if (user && user.theme) {
-                switch(user.theme.toLowerCase()) {
+                const theme = user.theme.toLowerCase();
+                switch(theme) {
                     case 'blue':
                         body.classList.add('theme-blue');
                         break;
@@ -417,11 +457,24 @@
                         body.classList.add('theme-green');
                         break;
                     case 'pink':
+                        body.classList.add('theme-pink');
+                        break;
                     default:
-                        // Pink is the default theme (no class needed)
+                        body.classList.add('theme-pink'); // Default fallback
                         break;
                 }
+                
+                // Cache the theme for faster loading next time
+                if (currentUserId) {
+                    localStorage.setItem(`user_theme_${currentUserId}`, theme);
+                }
+            } else {
+                // Default to pink if no theme is specified
+                body.classList.add('theme-pink');
             }
+            
+            // Show the page content
+            body.classList.add('theme-loaded');
         }
 
         // Initialize Firebase
@@ -444,6 +497,8 @@
             } catch (error) {
                 console.error('Błąd inicjalizacji Firebase:', error);
                 showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
+                // Still show the page even if Firebase fails
+                document.body.classList.add('theme-loaded');
             }
         }
 
@@ -482,6 +537,7 @@
             const user = users.find(u => u.id === userId);
             if (!user) {
                 showMessage('error', 'Użytkownik nie istnieje w bazie danych');
+                document.body.classList.add('theme-loaded'); // Show page even with error
                 return;
             }
             
@@ -730,6 +786,7 @@
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
+            preloadTheme();
             initFirebase();
         });
     </script>
