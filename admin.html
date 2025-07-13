@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aplikacja Anonimowych Pytań</title>
+    <title>Aplikacja Anonimowych Pytań - Admin</title>
     <style>
         * {
             margin: 0;
@@ -185,90 +184,6 @@
             word-break: break-all;
         }
         
-        .user-interface {
-            text-align: center;
-        }
-        
-        .user-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .questions-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .question-item {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            border-left: 4px solid #764ba2;
-            position: relative;
-        }
-        
-        .question-item:last-child {
-            margin-bottom: 0;
-        }
-        
-        .question-text {
-            font-size: 16px;
-            line-height: 1.5;
-            color: #333;
-        }
-        
-        .question-time {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-        
-        .hidden {
-            display: none;
-        }
-        
-        .success-message {
-            background: #2ed573;
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 15px;
-            text-align: center;
-        }
-        
-        .error-message {
-            background: #ff4757;
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 15px;
-            text-align: center;
-        }
-        
-        .warning-message {
-            background: #ffa502;
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 15px;
-            text-align: center;
-        }
-        
-        .back-btn {
-            background: #6c757d;
-            margin-right: 10px;
-        }
-        
-        .back-btn:hover {
-            background: #5a6268;
-        }
-
         .firebase-config {
             margin-top: 20px;
             padding: 15px;
@@ -379,57 +294,34 @@
             margin-top: 5px;
         }
 
-        .admin-access-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #6c757d;
+        .success-message {
+            background: #2ed573;
             color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        /* New styles for answers */
-        .answer-section {
+            padding: 15px;
+            border-radius: 10px;
             margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px dashed #ddd;
+            text-align: center;
+        }
+        
+        .error-message {
+            background: #ff4757;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        .warning-message {
+            background: #ffa502;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
         }
 
-        .answer-text {
-            font-style: italic;
-            color: #555;
-            margin-bottom: 10px;
-        }
-
-        .answer-time {
-            font-size: 11px;
-            color: #888;
-        }
-
-        .answer-form {
-            margin-top: 10px;
-        }
-
-        .answer-textarea {
-            width: 100%;
-            min-height: 60px;
-            margin-bottom: 5px;
-        }
-
-        .answer-btn {
-            padding: 5px 10px;
-            font-size: 14px;
-        }
-
-        .has-answer {
-            border-left-color: #2ed573;
-        }
-
-         .messages-btn {
+        .messages-btn {
             background: #17a2b8;
             margin-left: 10px;
         }
@@ -437,115 +329,68 @@
         .messages-btn:hover {
             background: #138496;
         }
-
     </style>
 </head>
 <body>
     <script>
-    // Check if user is logged in or if this is a user page
-    const urlParams = new URLSearchParams(window.location.search);
-    const isUserPage = urlParams.has('user');
+    // Check login status
+    const loginExpiry = localStorage.getItem('adminLoggedIn');
+    const currentTime = new Date().getTime();
     
-    if (!isUserPage) {
-        // Check login status
-        const loginExpiry = localStorage.getItem('adminLoggedIn');
-        const currentTime = new Date().getTime();
-        
-        if (!loginExpiry || currentTime > parseInt(loginExpiry)) {
-            // Not logged in or session expired - redirect to login
-            localStorage.removeItem('adminLoggedIn');
-            window.location.href = 'index.html';
-        }
+    if (!loginExpiry || currentTime > parseInt(loginExpiry)) {
+        // Not logged in or session expired - redirect to login
+        localStorage.removeItem('adminLoggedIn');
+        window.location.href = 'index.html';
     }
-</script>
+    </script>
     
     <div class="auto-save-indicator" id="saveIndicator">Zapisano automatycznie</div>
     
     <div class="container">
-        <!-- Interfejs Administratora -->
-        <div id="admin-section" class="hidden">
-            <h1>Anonimowe Pytania - Administrator</h1>
+        <h1>Anonimowe Pytania - Administrator</h1>
 
-            
-            <div class="section">
-                <h2>Zarządzanie Wiadomościami</h2>
-                <button class="messages-btn" onclick="window.open('/messages.html', '_blank')">Przejdź do Strony Wiadomości</button>
-                <p style="margin-top: 10px;">Adres strony wiadomości: <code>https://yourdomain.com/messages.html</code></p>
-            </div>
-            
-            <div class="section">
-                <h2>Konfiguracja Firebase</h2>
-                <div class="firebase-config">
-                    <h3>
-                        <span class="status-indicator" id="statusIndicator"></span>
-                        Status połączenia z Firebase
-                    </h3>
-                    <input type="text" id="firebaseConfigApiKey" placeholder="API Key" value="AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM">
-                    <input type="text" id="firebaseConfigAuthDomain" placeholder="Auth Domain" value="nie-masz-psychy.firebaseapp.com">
-                    <input type="text" id="firebaseConfigProjectId" placeholder="Project ID" value="nie-masz-psychy">
-                    <input type="text" id="firebaseConfigStorageBucket" placeholder="Storage Bucket" value="nie-masz-psychy.firebasestorage.app">
-                    <input type="text" id="firebaseConfigMessagingSenderId" placeholder="Messaging Sender ID" value="381728790253">
-                    <input type="text" id="firebaseConfigAppId" placeholder="App ID" value="1:381728790253:web:a9b3a40ab52e28a11b5ee4">
-                    <div class="config-help">
-                        Dane konfiguracyjne są już wstępnie wypełnione
-                    </div>
-                    <br>
-                    <button class="save-btn" onclick="initFirebase()">Połącz z Firebase</button>
+        <div class="section">
+            <h2>Zarządzanie Wiadomościami</h2>
+            <button class="messages-btn" onclick="window.open('/messages.html', '_blank')">Przejdź do Strony Wiadomości</button>
+            <p style="margin-top: 10px;">Adres strony wiadomości: <code>https://yourdomain.com/messages.html</code></p>
+        </div>
+        
+        <div class="section">
+            <h2>Konfiguracja Firebase</h2>
+            <div class="firebase-config">
+                <h3>
+                    <span class="status-indicator" id="statusIndicator"></span>
+                    Status połączenia z Firebase
+                </h3>
+                <input type="text" id="firebaseConfigApiKey" placeholder="API Key" value="AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM">
+                <input type="text" id="firebaseConfigAuthDomain" placeholder="Auth Domain" value="nie-masz-psychy.firebaseapp.com">
+                <input type="text" id="firebaseConfigProjectId" placeholder="Project ID" value="nie-masz-psychy">
+                <input type="text" id="firebaseConfigStorageBucket" placeholder="Storage Bucket" value="nie-masz-psychy.firebasestorage.app">
+                <input type="text" id="firebaseConfigMessagingSenderId" placeholder="Messaging Sender ID" value="381728790253">
+                <input type="text" id="firebaseConfigAppId" placeholder="App ID" value="1:381728790253:web:a9b3a40ab52e28a11b5ee4">
+                <div class="config-help">
+                    Dane konfiguracyjne są już wstępnie wypełnione
                 </div>
-            </div>
-            
-            <div class="section">
-                <h2>Dodaj Użytkowników</h2>
-                <div class="input-group">
-                    <input type="text" id="userNameInput" placeholder="Wpisz imię użytkownika">
-                    <button onclick="addUser()">Dodaj Użytkownika</button>
-                </div>
-                <div id="userList" class="user-list"></div>
-            </div>
-            
-            <div class="section">
-                <h2>Generuj Przydziały</h2>
-                <button onclick="generateAssignments()">Generuj Losowe Przydziały</button>
-                <div id="assignmentsList"></div>
+                <br>
+                <button class="save-btn" onclick="initFirebase()">Połącz z Firebase</button>
             </div>
         </div>
         
-        <!-- Interfejs Użytkownika -->
-        <div id="user-section" class="hidden">
-            <div class="user-interface">
-                <div class="user-header">
-                    <h1 id="userWelcome">Witaj!</h1>
-                    <p id="userInfo">Twój interfejs anonimowych pytań</p>
-                </div>
-                
-                <div class="section">
-                    <h2>Wyślij Pytanie</h2>
-                    <p id="assignmentInfo"></p>
-                    <div class="input-group">
-                        <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
-                    </div>
-                    <button onclick="sendQuestion()">Wyślij Pytanie</button>
-                    <div id="questionMessage"></div>
-                </div>
-                
-                <div class="questions-section">
-                    <h2>Pytania dla Ciebie</h2>
-                    <div id="receivedQuestions">
-                        <p style="text-align: center; color: #666;">Brak pytań.</p>
-                    </div>
-                </div>
+        <div class="section">
+            <h2>Dodaj Użytkowników</h2>
+            <div class="input-group">
+                <input type="text" id="userNameInput" placeholder="Wpisz imię użytkownika">
+                <button onclick="addUser()">Dodaj Użytkownika</button>
             </div>
-
-            <div class="questions-section">
-                <h2>Odpowiedzi Uczestników</h2>
-                <div id="askedQuestions">
-                    <p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>
-                </div>
-            </div>
+            <div id="userList" class="user-list"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Generuj Przydziały</h2>
+            <button onclick="generateAssignments()">Generuj Losowe Przydziały</button>
+            <div id="assignmentsList"></div>
         </div>
     </div>
-
-    <button id="adminAccessBtn" class="admin-access-btn hidden" onclick="showAdminInterface()">Panel Admina</button>
 
     <!-- Load Firebase SDK first -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -558,8 +403,6 @@
         let users = [];
         let assignments = {};
         let questions = {};
-        let currentUserId = null;
-        let isAdmin = false;
         
         // Firebase configuration
         const firebaseConfig = {
@@ -588,7 +431,6 @@
                     questions = data.questions || {};
                     
                     updateUI();
-                    checkUserAccess();
                     
                     showMessage('success', 'Dane zaktualizowane z Firebase!');
                 });
@@ -602,26 +444,6 @@
                 return false;
             }
         };
-
-        // Check user access from URL
-        function checkUserAccess() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get('user');
-            
-            if (userId) {
-                // Check if user exists in database
-                const userExists = users.some(u => u.id === userId);
-                if (userExists) {
-                    openUserInterface(userId);
-                    return;
-                } else {
-                    showMessage('error', 'Użytkownik nie istnieje w bazie danych');
-                }
-            }
-            
-            // If no valid user ID, show admin interface
-            showAdminInterface();
-        }
 
         // Save data to Firebase
         window.saveDataToFirebase = async function() {
@@ -653,7 +475,7 @@
             messageDiv.className = `${type}-message`;
             messageDiv.textContent = text;
             
-            document.getElementById('admin-section').insertAdjacentHTML('afterbegin', messageDiv.outerHTML);
+            document.querySelector('.container').insertAdjacentHTML('afterbegin', messageDiv.outerHTML);
             
             setTimeout(() => {
                 const msg = document.querySelector(`.${type}-message`);
@@ -665,11 +487,6 @@
         function updateUI() {
             updateUserList();
             updateAssignmentsList();
-            
-            if (currentUserId) {
-                updateReceivedQuestions();
-                updateAskedQuestions(); // Add this line
-            }
         }
 
         // Helper functions
@@ -701,7 +518,7 @@
         
         // Generate user link
         function generateUserLink(userId) {
-            return window.location.href.split('?')[0] + '?user=' + userId;
+            return window.location.href.replace('admin.html', 'users.html') + '?user=' + userId;
         }
         
         // Copy to clipboard
@@ -758,7 +575,7 @@
                     <span class="user-name">${user.name}</span>
                     <div class="user-link">${userLink}</div>
                     <div class="user-actions">
-                        <button onclick="openUserInterface('${user.id}')">Otwórz Interfejs</button>
+                        <button onclick="window.open('${userLink}', '_blank')">Otwórz Interfejs</button>
                         <button class="copy-btn" onclick="copyToClipboard('${userLink}')">Kopiuj Link</button>
                         <button class="remove-btn" onclick="removeUser('${user.id}')">Usuń Użytkownika</button>
                     </div>
@@ -814,235 +631,11 @@
                 }
             });
         }
-        
-        // Open user interface
-        function openUserInterface(userId) {
-            isAdmin = false;
-            // Hide admin access button for regular users
-            document.getElementById('adminAccessBtn').classList.add('hidden');
-            
-            currentUserId = userId;
-            const user = users.find(u => u.id === userId);
-            const assignedUser = users.find(u => u.id === assignments[userId]);
-            
-            if (!user) {
-                showAdminInterface();
-                return;
-            }
-            
-            document.getElementById('userWelcome').textContent = `Witaj, ${user.name}!`;
-            
-            if (assignedUser) {
-                
-                document.getElementById('assignmentInfo').textContent = `Wyślij pytanie do ${assignedUser.name}:`;
-            } else {
-                
-                document.getElementById('assignmentInfo').textContent = 'Brak dostępnego przydziału';
-            }
-            
-            updateReceivedQuestions();
-            updateAskedQuestions();
-            
-            document.getElementById('admin-section').classList.add('hidden');
-            document.getElementById('user-section').classList.remove('hidden');
-            
-            // Update URL without reloading
-            const newUrl = window.location.href.split('?')[0] + '?user=' + userId;
-            window.history.pushState({ path: newUrl }, '', newUrl);
-        }
-        
-        // Show admin interface
-        function showAdminInterface() {
-            isAdmin = true;
-            document.getElementById('adminAccessBtn').classList.add('hidden');
-            
-            document.getElementById('admin-section').classList.remove('hidden');
-            document.getElementById('user-section').classList.add('hidden');
-            currentUserId = null;
-            
-            // Update URL without reloading
-            const newUrl = window.location.href.split('?')[0];
-            window.history.pushState({ path: newUrl }, '', newUrl);
-        }
-        
-        // Send question
-        function sendQuestion() {
-            const questionInput = document.getElementById('questionInput');
-            const questionText = questionInput.value.trim();
-            const messageDiv = document.getElementById('questionMessage');
-            
-            if (!questionText) {
-                messageDiv.innerHTML = '<div class="error-message">Proszę wpisać pytanie</div>';
-                return;
-            }
-            
-            if (!assignments[currentUserId]) {
-                messageDiv.innerHTML = '<div class="error-message">Brak dostępnego przydziału</div>';
-                return;
-            }
-            
-            const targetUserId = assignments[currentUserId];
-            
-            if (!questions[targetUserId]) {
-                questions[targetUserId] = [];
-            }
-            
-            questions[targetUserId].push({
-                text: questionText,
-                timestamp: new Date().toLocaleString(),
-                from: currentUserId
-            });
-            
-            questionInput.value = '';
-            messageDiv.innerHTML = '<div class="success-message">Pytanie zostało wysłane pomyślnie!</div>';
-            
-            setTimeout(() => {
-                messageDiv.innerHTML = '';
-            }, 3000);
-            
-            saveDataToFirebase();
-        }
-        
-        // Update received questions
-        function updateReceivedQuestions() {
-            const receivedQuestionsDiv = document.getElementById('receivedQuestions');
-            const userQuestions = questions[currentUserId] || [];
-            
-            if (userQuestions.length === 0) {
-                receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
-                return;
-            }
-            
-            receivedQuestionsDiv.innerHTML = '';
-            userQuestions.forEach((question, index) => {
-                const fromUser = users.find(u => u.id === question.from);
-                const questionItem = document.createElement('div');
-                questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
-                
-                let answerSection = '';
-                if (question.answer) {
-                    answerSection = `
-                        <div class="answer-section">
-                            <div class="answer-text">${question.answer.text}</div>
-                            ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Sekret)</div>' : ''}
-                            <div class="answer-time">Odpowiedź: ${question.answer.timestamp}</div>
-                        </div>
-                    `;
-                } else {
-                    answerSection = `
-                        <div class="answer-form">
-                            <textarea class="answer-textarea" id="answer-${index}" placeholder="Napisz odpowiedź..."></textarea>
-                            <div style="margin-bottom: 5px;">
-                                <input type="checkbox" id="secret-${index}">
-                                <label for="secret-${index}">👀 SEKRET 👀</label>
-                            </div>
-                            <button class="answer-btn" onclick="sendAnswer(${index})">Wyślij odpowiedź</button>
-                        </div>
-                    `;
-                }
-                
-                questionItem.innerHTML = `
-                    <div class="question-text">${question.text}</div>
-                    <div class="question-time">Otrzymano: ${question.timestamp}${fromUser ? ` (od ${fromUser.name})` : ''}</div>
-                    ${answerSection}
-                `;
-                receivedQuestionsDiv.appendChild(questionItem);
-            });
-        }
-        
-        // Send answer to question
-        function sendAnswer(questionIndex) {
-            const answerTextarea = document.getElementById(`answer-${questionIndex}`);
-            const answerText = answerTextarea.value.trim();
-            const isSecret = document.getElementById(`secret-${questionIndex}`).checked;
-            
-            if (!answerText) {
-                alert('Proszę wpisać odpowiedź');
-                return;
-            }
-            
-            if (!questions[currentUserId] || !questions[currentUserId][questionIndex]) {
-                alert('Nie znaleziono pytania');
-                return;
-            }
-            
-            questions[currentUserId][questionIndex].answer = {
-                text: answerText,
-                timestamp: new Date().toLocaleString(),
-                secret: isSecret  // Add the secret flag to the answer
-            };
-            
-            saveDataToFirebase();
-            updateReceivedQuestions();
-        }
-        
-        // Handle back/forward navigation
-        window.addEventListener('popstate', function() {
-            checkUserAccess();
-        });
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
-            initFirebase().then((success) => {
-                if (!success) {
-                    showAdminInterface();
-                }
-            });
+            initFirebase();
         });
-
-        // Update asked questions
-        function updateAskedQuestions() {
-            const askedQuestionsDiv = document.getElementById('askedQuestions');
-            
-            // Find all questions asked by this user
-            const userQuestions = [];
-            Object.keys(questions).forEach(targetUserId => {
-                const targetQuestions = questions[targetUserId] || [];
-                targetQuestions.forEach(question => {
-                    if (question.from === currentUserId) {
-                        const targetUser = users.find(u => u.id === targetUserId);
-                        userQuestions.push({
-                            ...question,
-                            targetUser: targetUser
-                        });
-                    }
-                });
-            });
-            
-            if (userQuestions.length === 0) {
-                askedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>';
-                return;
-            }
-            
-            // Sort by timestamp (newest first)
-            userQuestions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            
-            askedQuestionsDiv.innerHTML = '';
-            userQuestions.forEach(question => {
-                const questionItem = document.createElement('div');
-                questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
-                
-                let answerSection = '';
-                if (question.answer) {
-                    answerSection = `
-                        <div class="answer-section ${question.answer.secret ? 'secret-answer' : ''}">
-                            <div class="answer-text">${question.answer.text}</div>
-                            ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>' : ''}
-                            <div class="answer-time">Odpowiedź: ${question.answer.timestamp}</div>
-                        </div>
-                    `;
-                } else {
-                    answerSection = '<div class="answer-section" style="color: #888;">(Brak odpowiedzi)</div>';
-                }
-                
-                questionItem.innerHTML = `
-                    <div class="question-text">${question.text}</div>
-                    <div class="question-time">Wysłano: ${question.timestamp}${question.targetUser ? ` (do ${question.targetUser.name})` : ''}</div>
-                    ${answerSection}
-                `;
-                askedQuestionsDiv.appendChild(questionItem);
-            });
-        }
     </script>
 </body>
 </html>
