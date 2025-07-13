@@ -413,7 +413,7 @@
             apiKey: "AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM",
             authDomain: "nie-masz-psychy.firebaseapp.com",
             projectId: "nie-masz-psychy",
-            storageBucket: "nie-masz-psychy.firebasestorage.app",
+            storageBucket: "nie-masz-psychy.appspot.com",
             messagingSenderId: "381728790253",
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
@@ -625,7 +625,7 @@
             }
         }
 
-        // Update received questions with form state preservation and proper sorting
+        // Update received questions with form state preservation and proper sorting (newest first)
         function updateReceivedQuestions() {
             const receivedQuestionsDiv = document.getElementById('receivedQuestions');
             const userQuestions = questions[currentUserId] || [];
@@ -766,7 +766,7 @@
             updateReceivedQuestions();
         }
 
-        // Update asked questions with consistent styling
+        // Update asked questions with consistent styling (newest first)
         function updateAskedQuestions() {
             const askedQuestionsDiv = document.getElementById('askedQuestions');
             
