@@ -426,9 +426,11 @@
                 showMessage('error', 'Najpierw załaduj swój profil');
                 return;
             }
-        
+
+            console.log(users(
             // Filter out the current user from possible recipients
             const possibleRecipients = users.filter(user => user.id !== currentUserId);
+            console.log(possibleRecipients)
             
             if (possibleRecipients.length === 0) {
                 showMessage('error', 'Brak dostępnych odbiorców');
@@ -441,7 +443,7 @@
             
             // Update assignment in Firebase data
             assignments[currentUserId] = newRecipient;
-            
+            console.log(currentUserId)
             // Save to Firebase
             saveDataToFirebase();
             
@@ -515,6 +517,7 @@
             try {
                 app = firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
+                console.log(database)
                 
                 // Listen for database changes
                 const dbRef = firebase.database().ref('/');
