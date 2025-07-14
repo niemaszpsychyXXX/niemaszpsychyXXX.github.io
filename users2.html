@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -425,20 +426,9 @@
                 showMessage('error', 'Najpierw załaduj swój profil');
                 return;
             }
-
-            firebase.functions().httpsCallable('changeRecipient')({ userId: currentUserId })
-        .then((result) => {
-            const newRecipient = result.data;
-            showMessage('success', `Odbiorca zmieniony na: ${newRecipient.name}`);
-            updateUI();
-        })
-        .catch((error) => {
-            showMessage('error', 'Błąd zmiany odbiorcy: ' + error.message);
-        });
-            /*
+        
             // Filter out the current user from possible recipients
             const possibleRecipients = users.filter(user => user.id !== currentUserId);
-            console.log(possibleRecipients);
             
             if (possibleRecipients.length === 0) {
                 showMessage('error', 'Brak dostępnych odbiorców');
@@ -459,7 +449,6 @@
             updateUI();
             
             showMessage('success', `Odbiorca zmieniony na: ${users.find(u => u.id === newRecipient).name}`);
-            */
         }
         
         // Pre-determine theme to avoid flash
@@ -531,16 +520,10 @@
                 const dbRef = firebase.database().ref('/');
                 dbRef.on('value', (snapshot) => {
                     const data = snapshot.val() || {};
-                    // users = data.users || [];
-                    users = (data.users || []).map(user => ({
-                        id: user.id,
-                        name: user.name,
-                        threadsNick: user.threadsNick,
-                        // Don't include: code, email, or other sensitive fields
-                    }));
+                    users = data.users || [];
                     assignments = data.assignments || {};
                     questions = data.questions || {};
-                    settings = data.settings || {}; // Load settings
+                    settings = data.settings || { mode: 'open_both' }; // Load settings
                     
                     updateUI();
                 });
