@@ -575,11 +575,13 @@
         }
         
         // Update admin password
+        // Update admin password
         function updateAdminPassword() {
             const newPassword = document.getElementById('adminPasswordInput').value.trim();
             
             if (newPassword === '') {
-                alert('Proszę wpisać nowe hasło');
+                // Don't do anything if password is empty
+                showMessage('warning', 'Nie wprowadzono nowego hasła - hasło pozostaje bez zmian');
                 return;
             }
             
