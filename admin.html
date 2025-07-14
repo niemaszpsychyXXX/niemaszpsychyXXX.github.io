@@ -400,6 +400,22 @@
         .hidden {
             display: none;
         }
+
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 1em;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
     </style>
 </head>
 <body>
@@ -444,6 +460,23 @@
                 </div>
                 <br>
                 <button class="save-btn" onclick="initFirebase()">Połącz z Firebase</button>
+
+                <div class="section">
+                    <h2>Ustawienia Aplikacji</h2>
+                    <div class="input-group">
+                        <select id="appModeSelect" style="padding: 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px; flex: 1;">
+                            <option value="open_both">Otwórz obie (pytania i odpowiedzi widoczne)</option>
+                            <option value="anon_question">Anonimowe pytania (tylko odpowiedzi widoczne)</option>
+                            <option value="anon_answer">Anonimowe odpowiedzi (tylko pytania widoczne)</option>
+                            <option value="anon_both">Anonimowe obie (pytania i odpowiedzi ukryte)</option>
+                        </select>
+                        <button onclick="saveSettings()">Zapisz Ustawienia</button>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="adminPasswordInput" placeholder="Nowe hasło administratora" style="flex: 1;">
+                        <button onclick="updateAdminPassword()">Zaktualizuj Hasło</button>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -479,6 +512,74 @@
         let assignments = {};
         let questions = {};
         let userCodes = {}; // Maps user codes to user IDs
+
+        let settings = {
+            mode: "open_both",
+            adminPassword: "adminpass" // Default password
+        };
+
+        // Load settings from Firebase
+        function loadSettings(data) {
+            if (data.settings) {
+                settings = data.settings;
+                document.getElementById('appModeSelect').value = settings.mode || "open_both";
+            }
+            if (data.settings?.adminPassword) {
+                settings.adminPassword = data.settings.adminPassword;
+                ADMIN_PASSWORD = settings.adminPassword; // Update the current session password
+            }
+        }
+        
+        // Save settings to Firebase
+        function saveSettings() {
+            if (!db) {
+                alert('Najpierw połącz się z Firebase');
+                return;
+            }
+        
+            settings.mode = document.getElementById('appModeSelect').value;
+            
+            showLoadingStatus();
+            firebase.database().ref('settings').set(settings)
+                .then(() => {
+                    showMessage('success', 'Ustawienia zapisane!');
+                    showSaveIndicator();
+                })
+                .catch(error => {
+                    console.error('Błąd zapisu ustawień:', error);
+                    showMessage('error', 'Błąd zapisu ustawień: ' + error.message);
+                });
+        }
+        
+        // Update admin password
+        function updateAdminPassword() {
+            const newPassword = document.getElementById('adminPasswordInput').value.trim();
+            
+            if (newPassword === '') {
+                alert('Proszę wpisać nowe hasło');
+                return;
+            }
+            
+            if (!db) {
+                alert('Najpierw połącz się z Firebase');
+                return;
+            }
+        
+            settings.adminPassword = newPassword;
+            ADMIN_PASSWORD = newPassword; // Update current session password
+            
+            showLoadingStatus();
+            firebase.database().ref('settings/adminPassword').set(newPassword)
+                .then(() => {
+                    showMessage('success', 'Hasło zaktualizowane!');
+                    showSaveIndicator();
+                    document.getElementById('adminPasswordInput').value = '';
+                })
+                .catch(error => {
+                    console.error('Błąd aktualizacji hasła:', error);
+                    showMessage('error', 'Błąd aktualizacji hasła: ' + error.message);
+                });
+        }
         
         // Firebase configuration
         const firebaseConfig = {
@@ -523,7 +624,7 @@
         }
 
         function login(password) {
-            if (password === ADMIN_PASSWORD) {
+            if (password === settings.adminPassword) {
                 sessionStorage.setItem('adminLoginTime', Date.now().toString());
                 showAdminPanel();
                 // Auto-initialize Firebase after successful login
@@ -564,7 +665,6 @@
                 updateConnectionStatus();
                 
                 // Listen for database changes
-                const dbRef = firebase.database().ref('/');
                 dbRef.on('value', (snapshot) => {
                     const data = snapshot.val() || {};
                     users = data.users || [];
@@ -572,8 +672,12 @@
                     questions = data.questions || {};
                     userCodes = data.userCodes || {};
                     
-                    updateUI();
+                    // Load settings if they exist
+                    if (data.settings) {
+                        loadSettings(data);
+                    }
                     
+                    updateUI();
                     showMessage('success', 'Dane zaktualizowane z Firebase!');
                 });
                 
