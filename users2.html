@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            /* Neutral default - no theme colors until determined */
+            --primary-bg: #f5f5f5;
+            --primary-color: #666;
+            --secondary-color: #666;
+            --gradient-start: #666;
+            --gradient-end: #666;
+            --hover-shadow: rgba(102, 102, 102, 0.3);
+            --focus-shadow: rgba(102, 102, 102, 0.1);
+        }
+        
+        /* Pink Theme */
+        .theme-pink {
+            --primary-bg: #fccbe2;
+            --primary-color: #b6196e;
+            --secondary-color: #b83280;
+            --gradient-start: #b83280;
+            --gradient-end: #b6196e;
+            --hover-shadow: rgba(184, 50, 128, 0.3);
+            --focus-shadow: rgba(184, 50, 128, 0.1);
+        }
+        
+        /* Blue Theme */
+        .theme-blue {
+            --primary-bg: #cbe2fc;
+            --primary-color: #196eb6;
+            --secondary-color: #3280b8;
+            --gradient-start: #3280b8;
+            --gradient-end: #196eb6;
+            --hover-shadow: rgba(50, 128, 184, 0.3);
+            --focus-shadow: rgba(50, 128, 184, 0.1);
+        }
+        
+        /* Green Theme */
+        .theme-green {
+            --primary-bg: #cbfce2;
+            --primary-color: #19b66e;
+            --secondary-color: #32b880;
+            --gradient-start: #32b880;
+            --gradient-end: #19b66e;
+            --hover-shadow: rgba(50, 184, 128, 0.3);
+            --focus-shadow: rgba(50, 184, 128, 0.1);
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--primary-bg);
+            min-height: 100vh;
+            padding: 40px 20px;
+            transition: background-color 0.3s ease;
+            /* Hide content until theme is applied */
+            opacity: 0;
+            transition: opacity 0.3s ease, background-color 0.3s ease;
+        }
+        
+        body.theme-loaded {
+            opacity: 1;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            font-weight: 700;
+            transition: color 0.3s ease;
+        }
+        
+        .user-interface {
+            text-align: center;
+        }
+        
+        .user-header {
+            background: #fafafa;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .user-header h1 {
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+            font-size: 2em;
+            transition: color 0.3s ease;
+        }
+        
+        .user-header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .section {
+            background: #fafafa;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .section h2 {
+            color: var(--secondary-color);
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        input[type="text"], textarea {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px var(--focus-shadow);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px var(--hover-shadow);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .user-section {
+            background: #fafafa;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            text-align: left;
+        }
+        
+        .user-section h2 {
+            color: var(--secondary-color);
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            font-weight: 600;
+            text-align: left;
+            transition: color 0.3s ease;
+        }
+        
+        .question-item {
+            background: transparent;
+            margin-bottom: 30px;
+            border: none;
+            padding: 20px 0;
+            position: relative;
+        }
+        
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #888;
+        }
+        
+        .question-author {
+            font-weight: 600;
+            color: #b1b1b1;
+        }
+        
+        .question-time {
+            color: #aaa;
+        }
+        
+        .question-content {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #b1b1b1;
+            margin-bottom: 20px;
+            white-space: pre-line;
+            border-left: 4px solid #ddd;
+            padding-left: 15px;
+            min-height: 40px;
+        }
+        
+        .answer-section {
+            margin-top: 15px;
+            padding-top: 0;
+            border-top: none;
+        }
+        
+        .answer-item {
+            border-radius: 0;
+            margin-bottom: 0;
+        }
+        
+        .answer-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .answer-author {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .answer-time {
+            color: #aaa;
+        }
+        
+        .answer-content {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-line;
+            border-left: 4px solid #090909;
+            padding-left: 15px;
+            min-height: 40px;
+        }
+        
+        .answer-form {
+            margin-top: 10px;
+        }
+
+        .answer-textarea {
+            width: 100%;
+            min-height: 60px;
+            margin-bottom: 5px;
+        }
+
+        .answer-btn {
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+
+        .has-answer {
+            border-left-color: #2ed573;
+        }
+        
+        .success-message {
+            background: #2ed573;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        .error-message {
+            background: #ff4757;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        .warning-message {
+            background: #ffa502;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .admin-access-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .hidden {
+            display: none;
+        }
+        
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+                margin-bottom: 30px;
+            }
+            
+            .section, .user-section {
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .section h2, .user-section h2 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Aplikacja Anonimowych Pytań</h1>
+        
+        <div class="user-interface">
+            <div class="user-header">
+                <h1 id="userWelcome">Witaj!</h1>
+                <p id="userInfo">To twój interfejs do zadawania pytań</p>
+            </div>
+            
+            <div class="section">
+                <h2>Wyślij Pytanie</h2>
+                <p id="assignmentInfo"></p>
+                <div class="input-group">
+                    <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
+                </div>
+                <button onclick="sendQuestion()">Wyślij Pytanie</button>
+                <button onclick="changeRecipient()" style="margin-top: 10px; background: var(--secondary-color);">Zmień odbiorcę losowo</button>
+                <div id="questionMessage"></div>
+            </div>
+            
+            <div class="user-section">
+                <h2>Pytania dla Ciebie</h2>
+                <div id="receivedQuestions">
+                    <p style="text-align: center; color: #666;">Brak pytań.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="user-section">
+            <h2>Odpowiedzi Uczestników</h2>
+            <div id="askedQuestions">
+                <p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>
+            </div>
+        </div>
+    </div>
+
+    <button id="adminAccessBtn" class="admin-access-btn hidden" onclick="window.location.href='admin.html'">Panel Admina</button>
+
+    <!-- Load Firebase SDK first -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script>
+        // Global variables
+        let app = null;
+        let db = null;
+        let users = [];
+        let assignments = {};
+        let questions = {};
+        let currentUserId = null;
+        let settings = { mode: 'open_both' }; // Default mode
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM",
+            authDomain: "nie-masz-psychy.firebaseapp.com",
+            projectId: "nie-masz-psychy",
+            storageBucket: "nie-masz-psychy.appspot.com",
+            messagingSenderId: "381728790253",
+            appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
+        };
+
+        // Change recipient randomly
+        function changeRecipient() {
+            if (!currentUserId) {
+                showMessage('error', 'Najpierw załaduj swój profil');
+                return;
+            }
+        
+            // Filter out the current user from possible recipients
+            const possibleRecipients = users.filter(user => user.id !== currentUserId);
+            console.log(possibleRecipients);
+            
+            if (possibleRecipients.length === 0) {
+                showMessage('error', 'Brak dostępnych odbiorców');
+                return;
+            }
+        
+            // Select random recipient
+            const randomIndex = Math.floor(Math.random() * possibleRecipients.length);
+            const newRecipient = possibleRecipients[randomIndex].id;
+            
+            // Update assignment in Firebase data
+            assignments[currentUserId] = newRecipient;
+            
+            // Save to Firebase
+            saveDataToFirebase();
+            
+            // Update UI
+            updateUI();
+            
+            showMessage('success', `Odbiorca zmieniony na: ${users.find(u => u.id === newRecipient).name}`);
+        }
+        
+        // Pre-determine theme to avoid flash
+        function preloadTheme() {
+            const urlParams = new URLSearchParams(window.location.search);
+            let userId = urlParams.get('user');
+            
+            if (!userId) {
+                const userCode = urlParams.get('code');
+                if (userCode) {
+                    // We'll need to wait for Firebase data to find user by code
+                    return;
+                }
+            }
+            
+            // If we have a userId, we can try to get theme from localStorage cache
+            const cachedTheme = localStorage.getItem(`user_theme_${userId}`);
+            if (cachedTheme) {
+                applyTheme({ theme: cachedTheme });
+                document.body.classList.add('theme-loaded');
+            }
+        }
+
+        // Apply theme based on user data
+        function applyTheme(user) {
+            const body = document.body;
+            
+            // Remove existing theme classes
+            body.classList.remove('theme-blue', 'theme-green', 'theme-pink');
+            
+            // Apply theme based on user data
+            if (user && user.theme) {
+                const theme = user.theme.toLowerCase();
+                switch(theme) {
+                    case 'blue':
+                        body.classList.add('theme-blue');
+                        break;
+                    case 'green':
+                        body.classList.add('theme-green');
+                        break;
+                    case 'pink':
+                        body.classList.add('theme-pink');
+                        break;
+                    default:
+                        body.classList.add('theme-pink'); // Default fallback
+                        break;
+                }
+                
+                // Cache the theme for faster loading next time
+                if (currentUserId) {
+                    localStorage.setItem(`user_theme_${currentUserId}`, theme);
+                }
+            } else {
+                // Default to pink if no theme is specified
+                body.classList.add('theme-pink');
+            }
+            
+            // Show the page content
+            body.classList.add('theme-loaded');
+        }
+
+        // Initialize Firebase
+        async function initFirebase() {
+            try {
+                app = firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                
+                // Listen for database changes
+                const dbRef = firebase.database().ref('/');
+                dbRef.on('value', (snapshot) => {
+                    const data = snapshot.val() || {};
+                    users = data.users || [];
+                    assignments = data.assignments || {};
+                    questions = data.questions || {};
+                    settings = data.settings || { mode: 'open_both' }; // Load settings
+                    
+                    updateUI();
+                });
+                
+            } catch (error) {
+                console.error('Błąd inicjalizacji Firebase:', error);
+                showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
+                document.body.classList.add('theme-loaded');
+            }
+        }
+
+        // Display message
+        function showMessage(type, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `${type}-message`;
+            messageDiv.textContent = text;
+            
+            document.querySelector('.container').insertAdjacentHTML('afterbegin', messageDiv.outerHTML);
+            
+            setTimeout(() => {
+                const msg = document.querySelector(`.${type}-message`);
+                if (msg) msg.remove();
+            }, type === 'error' ? 5000 : 3000);
+        }
+
+        // Update UI after data changes
+        function updateUI() {
+            // Check if we have a valid user ID
+            const urlParams = new URLSearchParams(window.location.search);
+            let userId = urlParams.get('user');
+            
+            // If no user ID in URL, check for code
+            if (!userId) {
+                const userCode = urlParams.get('code');
+                if (userCode) {
+                    // Find user by code
+                    const user = users.find(u => u.code === userCode);
+                    if (user) {
+                        userId = user.id;
+                    }
+                }
+            }
+            
+            const user = users.find(u => u.id === userId);
+            if (!user) {
+                showMessage('error', 'Użytkownik nie istnieje w bazie danych');
+                document.body.classList.add('theme-loaded'); // Show page even with error
+                return;
+            }
+            
+            // Apply theme based on current user
+            applyTheme(user);
+            
+            currentUserId = userId;
+            const assignedUser = users.find(u => u.id === assignments[userId]);
+            
+            document.getElementById('userWelcome').textContent = `Witaj, ${user.name}!`;
+            
+            if (assignedUser) {
+                document.getElementById('assignmentInfo').textContent = `Wyślij pytanie do ${assignedUser.name} (${assignedUser.threadsNick}):`;
+            } else {
+                document.getElementById('assignmentInfo').textContent = 'Brak dostępnego przydziału';
+            }
+            
+            updateReceivedQuestions();
+            updateAskedQuestions();
+            
+            // Show admin access button if user is admin
+            const loginExpiry = localStorage.getItem('adminLoggedIn');
+            const currentTime = new Date().getTime();
+            if (loginExpiry && currentTime <= parseInt(loginExpiry)) {
+                document.getElementById('adminAccessBtn').classList.remove('hidden');
+            }
+        }
+
+        // Send question
+        function sendQuestion() {
+            const questionInput = document.getElementById('questionInput');
+            const questionText = questionInput.value.trim();
+            const messageDiv = document.getElementById('questionMessage');
+            
+            if (!questionText) {
+                messageDiv.innerHTML = '<div class="error-message">Proszę wpisać pytanie</div>';
+                return;
+            }
+            
+            if (!assignments[currentUserId]) {
+                messageDiv.innerHTML = '<div class="error-message">Brak dostępnego przydziału</div>';
+                return;
+            }
+            
+            const targetUserId = assignments[currentUserId];
+            
+            if (!questions[targetUserId]) {
+                questions[targetUserId] = [];
+            }
+            
+            questions[targetUserId].push({
+                text: questionText,
+                timestamp: new Date().toLocaleString(),
+                from: currentUserId,
+                mode: settings.mode || 'open_both' // Store current mode when question is sent
+            });
+            
+            questionInput.value = '';
+            messageDiv.innerHTML = '<div class="success-message">Pytanie zostało wysłane pomyślnie!</div>';
+            
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 3000);
+            
+            saveDataToFirebase();
+        }
+
+        // Save data to Firebase
+        async function saveDataToFirebase() {
+            if (!db) {
+                alert('Najpierw połącz się z Firebase');
+                return;
+            }
+        
+            try {
+                await firebase.database().ref('/').set({
+                    users: users,
+                    assignments: assignments,
+                    questions: questions,
+                    settings: settings, // Include settings in save
+                    lastUpdated: new Date().toISOString()
+                });
+            } catch (error) {
+                console.error('Błąd zapisu do Firebase:', error);
+                showMessage('error', 'Błąd zapisu: ' + error.message);
+            }
+        }
+
+        // Update received questions with form state preservation and proper sorting (newest first)
+        function updateReceivedQuestions() {
+            
+            // Save which textarea had focus before update
+            const focusedElement = document.activeElement;
+            let focusedIndex = null;
+            if (focusedElement && focusedElement.id.startsWith('answer-')) {
+                focusedIndex = focusedElement.id.replace('answer-', '');
+            }
+                
+            const receivedQuestionsDiv = document.getElementById('receivedQuestions');
+            const userQuestions = questions[currentUserId] || [];
+            
+            if (userQuestions.length === 0) {
+                receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
+                return;
+            }
+            
+            // Create array of questions with original indices for proper answer handling
+            const questionsWithIndices = userQuestions.map((question, originalIndex) => ({
+                ...question,
+                originalIndex: originalIndex
+            }));
+            
+            // Sort by timestamp (newest first)
+            questionsWithIndices.sort((a, b) => {
+                const dateA = new Date(a.timestamp);
+                const dateB = new Date(b.timestamp);
+                return dateB - dateA; // Newest first (descending order)
+            });
+            
+            // Save current form states before updating
+            const currentFormStates = {};
+            questionsWithIndices.forEach((question, displayIndex) => {
+                const answerTextarea = document.getElementById(`answer-${displayIndex}`);
+                const secretCheckbox = document.getElementById(`secret-${displayIndex}`);
+                
+                if (answerTextarea) {
+                    currentFormStates[displayIndex] = {
+                        text: answerTextarea.value,
+                        secret: secretCheckbox ? secretCheckbox.checked : false
+                    };
+                }
+            });
+            
+            receivedQuestionsDiv.innerHTML = '';
+            questionsWithIndices.forEach((question, displayIndex) => {
+                const fromUser = users.find(u => u.id === question.from);
+                const questionItem = document.createElement('div');
+                questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
+                
+                let answerSection = '';
+                if (question.answer) {
+                    answerSection = `
+                        <div class="answer-section">
+                            <div class="answer-item">
+                                <div class="answer-header">
+                                    <span class="answer-author">Ty</span>
+                                    <span class="answer-time">${question.answer.timestamp}</span>
+                                </div>
+                                <div class="answer-content">${question.answer.text}</div>
+                                ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Sekret)</div>' : ''}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    answerSection = `
+                        <div class="answer-form">
+                            <textarea class="answer-textarea" id="answer-${displayIndex}" placeholder="Napisz odpowiedź..."></textarea>
+                            <div style="margin-bottom: 5px;">
+                                <input type="checkbox" id="secret-${displayIndex}">
+                                <label for="secret-${displayIndex}">👀 SEKRET 👀</label>
+                            </div>
+                            <button class="answer-btn" onclick="sendAnswer(${question.originalIndex})">Wyślij odpowiedź</button>
+                        </div>
+                    `;
+                }
+                
+                questionItem.innerHTML = `
+                    <div class="question-header">
+                        <span class="question-author">${fromUser ? fromUser.name : 'Nieznany użytkownik'}</span>
+                        <span class="question-time">${question.timestamp}</span>
+                    </div>
+                    <div class="question-content">${question.text}</div>
+                    ${answerSection}
+                `;
+                receivedQuestionsDiv.prepend(questionItem);
+                
+                // Restore form state after creating the element
+                if (currentFormStates[displayIndex] && !question.answer) {
+                    const answerTextarea = document.getElementById(`answer-${displayIndex}`);
+                    const secretCheckbox = document.getElementById(`secret-${displayIndex}`);
+                    
+                    if (answerTextarea) {
+                        answerTextarea.value = currentFormStates[displayIndex].text;
+                    }
+                    if (secretCheckbox) {
+                        secretCheckbox.checked = currentFormStates[displayIndex].secret;
+                    }
+                }
+            });
+
+            // Restore focus after update
+            if (focusedIndex !== null) {
+                const newTextarea = document.getElementById(`answer-${focusedIndex}`);
+                if (newTextarea) {
+                    newTextarea.focus();
+                    // Restore cursor position
+                    newTextarea.selectionStart = focusedElement.selectionStart;
+                    newTextarea.selectionEnd = focusedElement.selectionEnd;
+                }
+            }
+        }
+
+        // Send answer to question
+        function sendAnswer(questionIndex) {
+            const answerTextarea = document.querySelector(`textarea[id^="answer-"]`);
+            const secretCheckbox = document.querySelector(`input[id^="secret-"]:checked`);
+            
+            const allTextareas = document.querySelectorAll('textarea[id^="answer-"]');
+            const allCheckboxes = document.querySelectorAll('input[id^="secret-"]');
+            
+            let answerText = '';
+            let isSecret = false;
+            
+            for (let textarea of allTextareas) {
+                if (textarea.value.trim()) {
+                    answerText = textarea.value.trim();
+                    const textareaIndex = textarea.id.replace('answer-', '');
+                    const checkbox = document.getElementById(`secret-${textareaIndex}`);
+                    if (checkbox) {
+                        isSecret = checkbox.checked;
+                    }
+                    break;
+                }
+            }
+            
+            if (!answerText) {
+                alert('Proszę wpisać odpowiedź');
+                return;
+            }
+            
+            if (!questions[currentUserId] || !questions[currentUserId][questionIndex]) {
+                alert('Nie znaleziono pytania');
+                return;
+            }
+            
+            questions[currentUserId][questionIndex].answer = {
+                text: answerText,
+                timestamp: new Date().toLocaleString(),
+                secret: isSecret,
+                mode: settings.mode || 'open_both' // Store current mode when answer is given
+            };
+            
+            saveDataToFirebase();
+            updateReceivedQuestions();
+        }
+
+        // Update asked questions with consistent styling (newest first)
+        function updateAskedQuestions() {
+            const askedQuestionsDiv = document.getElementById('askedQuestions');
+            
+            // Find all questions asked by this user
+            const userQuestions = [];
+            Object.keys(questions).forEach(targetUserId => {
+                const targetQuestions = questions[targetUserId] || [];
+                targetQuestions.forEach(question => {
+                    if (question.from === currentUserId) {
+                        const targetUser = users.find(u => u.id === targetUserId);
+                        userQuestions.push({
+                            ...question,
+                            targetUser: targetUser,
+                            askedTo: targetUserId
+                        });
+                    }
+                });
+            });
+            
+            if (userQuestions.length === 0) {
+                askedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>';
+                return;
+            }
+            
+            // Sort by timestamp (newest first)
+            userQuestions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            askedQuestionsDiv.innerHTML = '';
+            userQuestions.forEach(question => {
+                const questionItem = document.createElement('div');
+                questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
+                
+                let answerSection = '';
+                if (question.answer) {
+                    // Skip secret answers in public view
+                    if (question.answer.secret) {
+                        answerSection = `
+                            <div class="answer-section">
+                                <div class="answer-item">
+                                    <div class="answer-header">
+                                        <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
+                                        <span class="answer-time">${question.answer.timestamp}</span>
+                                    </div>
+                                    <div class="answer-content">${question.answer.text}</div>
+                                    <div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        answerSection = `
+                            <div class="answer-section">
+                                <div class="answer-item">
+                                    <div class="answer-header">
+                                        <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
+                                        <span class="answer-time">${question.answer.timestamp}</span>
+                                    </div>
+                                    <div class="answer-content">${question.answer.text}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    answerSection = '<div class="answer-section" style="color: #888;">(Brak odpowiedzi)</div>';
+                }
+                
+                questionItem.innerHTML = `
+                    <div class="question-header">
+                        <span class="question-author">Ty</span>
+                        <span class="question-time">${question.timestamp}</span>
+                    </div>
+                    <div class="question-content">${question.text}</div>
+                    ${answerSection}
+                `;
+                askedQuestionsDiv.appendChild(questionItem);
+            });
+        }
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            preloadTheme();
+            initFirebase();
+        });
+    </script>
+</body>
+</html>
