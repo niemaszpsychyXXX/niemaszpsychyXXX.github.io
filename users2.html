@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -401,311 +400,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
-        // Global variables
-        let app = null;
-        let db = null;
-        let currentUser = null;
-        let currentUserQuestions = [];
-        let currentUserAskedQuestions = [];
-        let currentUserAssignment = null;
-        let currentUserId = null;
-        let settings = {};
-
-        // STEP 1: Load only user lookup data (id, code, name) - minimal exposure
-async function loadUserLookupData() {
-    try {
-        const usersSnapshot = await firebase.database().ref('/users').once('value');
-        const allUsers = usersSnapshot.val() || {};
-        
-        // Create minimal lookup object with only essential data
-        const userLookup = {};
-        Object.keys(allUsers).forEach(userId => {
-            userLookup[userId] = {
-                id: userId,
-                code: allUsers[userId].code,
-                name: allUsers[userId].name,
-                threadsNick: allUsers[userId].threadsNick,
-                theme: allUsers[userId].theme
-            };
-        });
-        
-        return userLookup;
-    } catch (error) {
-        console.error('Błąd ładowania danych użytkowników:', error);
-        return {};
-    }
-}
-
-        // STEP 2: Load detailed data only for current user
-async function loadCurrentUserData(userId, userLookup) {
-    try {
-        // Get current user's full data
-        currentUser = userLookup[userId];
-        if (!currentUser) {
-            throw new Error('Użytkownik nie istnieje');
-        }
-        
-        // Load current user's assignment
-        const assignmentSnapshot = await firebase.database().ref(`/assignments/${userId}`).once('value');
-        currentUserAssignment = assignmentSnapshot.val();
-        
-        // Add assigned user info to current user object
-        if (currentUserAssignment && userLookup[currentUserAssignment]) {
-            currentUser.assignedUserName = userLookup[currentUserAssignment].name;
-            currentUser.assignedUserThreads = userLookup[currentUserAssignment].threadsNick;
-        }
-        
-        // Load current user's received questions
-        const questionsSnapshot = await firebase.database().ref(`/questions/${userId}`).once('value');
-        currentUserQuestions = questionsSnapshot.val() || [];
-        
-        // Load questions asked by current user
-        await loadAskedQuestions(userId, userLookup);
-        
-        // Load settings
-        const settingsSnapshot = await firebase.database().ref('/settings').once('value');
-        settings = settingsSnapshot.val() || { mode: 'open_both' };
-        
-        // Clear the lookup data from memory after use
-        userLookup = null;
-        
-    } catch (error) {
-        console.error('Błąd ładowania danych użytkownika:', error);
-        throw error;
-    }
-}
-
-// Load questions asked by current user (with target user names)
-async function loadAskedQuestions(userId, userLookup) {
-    try {
-        const allQuestionsSnapshot = await firebase.database().ref('/questions').once('value');
-        const allQuestions = allQuestionsSnapshot.val() || {};
-        
-        currentUserAskedQuestions = [];
-        Object.keys(allQuestions).forEach(targetUserId => {
-            const targetQuestions = allQuestions[targetUserId] || [];
-            targetQuestions.forEach((question, index) => {
-                if (question.from === userId) {
-                    currentUserAskedQuestions.push({
-                        ...question,
-                        targetUserId: targetUserId,
-                        questionIndex: index,
-                        targetUserName: userLookup[targetUserId]?.name || 'Nieznany użytkownik'
-                    });
-                }
-            });
-        });
-        
-        // Sort by timestamp (newest first)
-        currentUserAskedQuestions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        
-    } catch (error) {
-        console.error('Błąd ładowania zadanych pytań:', error);
-    }
-}
-
-// Initialize Firebase with two-step loading
-async function initSecureFirebase() {
-    try {
-        app = firebase.initializeApp(firebaseConfig);
-        db = firebase.database();
-        
-        // Get current user ID from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        let userId = urlParams.get('user');
-        
-        // STEP 1: Load minimal user lookup data
-        const userLookup = await loadUserLookupData();
-        
-        // If no user ID, try to find by code
-        if (!userId) {
-            const userCode = urlParams.get('code');
-            if (userCode) {
-                const userEntry = Object.values(userLookup).find(user => user.code === userCode);
-                if (userEntry) {
-                    userId = userEntry.id;
-                    // Update URL to use user ID
-                    window.history.replaceState({}, '', `?user=${userId}`);
-                }
-            }
-        }
-        
-        if (!userId || !userLookup[userId]) {
-            showMessage('error', 'Użytkownik nie istnieje w bazie danych');
-            return;
-        }
-        
-        currentUserId = userId;
-        
-        // STEP 2: Load detailed data only for current user
-        await loadCurrentUserData(userId, userLookup);
-        
-        // Setup secure listeners
-        setupSecureListeners(userId);
-        
-        updateSecureUI();
-        
-    } catch (error) {
-        console.error('Błąd inicjalizacji Firebase:', error);
-        showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
-        document.body.classList.add('theme-loaded');
-    }
-}
-
-// Setup listeners only for current user's data
-function setupSecureListeners(userId) {
-    // Listen for changes to current user's questions
-    firebase.database().ref(`/questions/${userId}`).on('value', (snapshot) => {
-        currentUserQuestions = snapshot.val() || [];
-        updateReceivedQuestions();
-    });
-    
-    // Listen for changes to current user's assignment
-    firebase.database().ref(`/assignments/${userId}`).on('value', async (snapshot) => {
-        currentUserAssignment = snapshot.val();
-        
-        // Update assigned user name if needed
-        if (currentUserAssignment) {
-            const assignedUserSnapshot = await firebase.database().ref(`/users/${currentUserAssignment}/name`).once('value');
-            const assignedUserName = assignedUserSnapshot.val();
-            const assignedUserThreadsSnapshot = await firebase.database().ref(`/users/${currentUserAssignment}/threadsNick`).once('value');
-            const assignedUserThreads = assignedUserThreadsSnapshot.val();
-            
-            if (assignedUserName) {
-                currentUser.assignedUserName = assignedUserName;
-                currentUser.assignedUserThreads = assignedUserThreads;
-            }
-        }
-        
-        updateSecureUI();
-    });
-    
-    // Listen for settings changes
-    firebase.database().ref('/settings').on('value', (snapshot) => {
-        settings = snapshot.val() || { mode: 'open_both' };
-    });
-}
-
-// Secure change recipient function
-async function changeRecipient() {
-    if (!currentUserId) {
-        showMessage('error', 'Najpierw załaduj swój profil');
-        return;
-    }
-    
-    try {
-        // Get minimal user list for random selection
-        const usersSnapshot = await firebase.database().ref('/users').once('value');
-        const allUsers = usersSnapshot.val() || {};
-        
-        const possibleRecipients = Object.keys(allUsers).filter(id => id !== currentUserId);
-        
-        if (possibleRecipients.length === 0) {
-            showMessage('error', 'Brak dostępnych odbiorców');
-            return;
-        }
-        
-        const randomIndex = Math.floor(Math.random() * possibleRecipients.length);
-        const newRecipient = possibleRecipients[randomIndex];
-        
-        // Update assignment in Firebase
-        await firebase.database().ref(`/assignments/${currentUserId}`).set(newRecipient);
-        
-        // Get new recipient's name for display
-        const newRecipientName = allUsers[newRecipient].name;
-        
-        showMessage('success', `Odbiorca zmieniony na: ${newRecipientName}`);
-        
-    } catch (error) {
-        console.error('Błąd zmiany odbiorcy:', error);
-        showMessage('error', 'Błąd zmiany odbiorcy: ' + error.message);
-    }
-}
-
-// Update UI function
-function updateSecureUI() {
-    if (!currentUser) return;
-    
-    // Apply theme
-    applyTheme(currentUser);
-    
-    // Update user welcome
-    document.getElementById('userWelcome').textContent = `Witaj, ${currentUser.name}!`;
-    
-    // Update assignment info
-    if (currentUserAssignment && currentUser.assignedUserName) {
-        document.getElementById('assignmentInfo').textContent = 
-            `Wyślij pytanie do ${currentUser.assignedUserName} (${currentUser.assignedUserThreads}):`;
-    } else {
-        document.getElementById('assignmentInfo').textContent = 'Brak dostępnego przydziału';
-    }
-    
-    updateReceivedQuestions();
-    updateAskedQuestions();
-    
-    // Show admin button if logged in
-    const loginExpiry = localStorage.getItem('adminLoggedIn');
-    const currentTime = new Date().getTime();
-    if (loginExpiry && currentTime <= parseInt(loginExpiry)) {
-        document.getElementById('adminAccessBtn').classList.remove('hidden');
-    }
-}
-
-// Send question with secure implementation
-async function sendQuestion() {
-    const questionInput = document.getElementById('questionInput');
-    const questionText = questionInput.value.trim();
-    const messageDiv = document.getElementById('questionMessage');
-    
-    if (!questionText) {
-        messageDiv.innerHTML = '<div class="error-message">Proszę wpisać pytanie</div>';
-        return;
-    }
-    
-    if (!currentUserAssignment) {
-        messageDiv.innerHTML = '<div class="error-message">Brak dostępnego przydziału</div>';
-        return;
-    }
-    
-    try {
-        const newQuestion = {
-            text: questionText,
-            timestamp: new Date().toLocaleString(),
-            from: currentUserId,
-            mode: settings.mode || 'open_both'
-        };
-        
-        // Add question to target user's questions
-        const targetQuestionsRef = firebase.database().ref(`/questions/${currentUserAssignment}`);
-        const targetQuestionsSnapshot = await targetQuestionsRef.once('value');
-        const targetQuestions = targetQuestionsSnapshot.val() || [];
-        
-        targetQuestions.push(newQuestion);
-        await targetQuestionsRef.set(targetQuestions);
-        
-        questionInput.value = '';
-        messageDiv.innerHTML = '<div class="success-message">Pytanie zostało wysłane pomyślnie!</div>';
-        
-        setTimeout(() => {
-            messageDiv.innerHTML = '';
-        }, 3000);
-        
-        // Refresh asked questions
-        const userLookup = await loadUserLookupData();
-        await loadAskedQuestions(currentUserId, userLookup);
-        updateAskedQuestions();
-        
-    } catch (error) {
-        console.error('Błąd wysyłania pytania:', error);
-        messageDiv.innerHTML = '<div class="error-message">Błąd wysyłania pytania: ' + error.message + '</div>';
-    }
-}
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    preloadTheme();
-    initSecureFirebase();
-});
         // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM",
@@ -716,39 +410,320 @@ document.addEventListener('DOMContentLoaded', function() {
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
 
-        // Change recipient randomly
-        function changeRecipient() {
+        // Global variables - only store what's absolutely necessary
+        let app = null;
+        let db = null;
+        let currentUser = null;
+        let currentUserQuestions = [];
+        let currentUserAskedQuestions = [];
+        let currentUserAssignment = null;
+        let currentUserId = null;
+        let settings = { mode: 'open_both' };
+
+        // STEP 1: Load only user lookup data (id, code, name) - minimal exposure
+        async function loadUserLookupData() {
+            try {
+                const usersSnapshot = await firebase.database().ref('/users').once('value');
+                const allUsers = usersSnapshot.val() || {};
+                
+                // Create minimal lookup object with only essential data
+                const userLookup = {};
+                Object.keys(allUsers).forEach(userId => {
+                    userLookup[userId] = {
+                        id: userId,
+                        code: allUsers[userId].code,
+                        name: allUsers[userId].name,
+                        threadsNick: allUsers[userId].threadsNick,
+                        theme: allUsers[userId].theme
+                    };
+                });
+                
+                return userLookup;
+            } catch (error) {
+                console.error('Błąd ładowania danych użytkowników:', error);
+                return {};
+            }
+        }
+
+        // STEP 2: Load detailed data only for current user
+        async function loadCurrentUserData(userId, userLookup) {
+            try {
+                // Get current user's full data
+                currentUser = userLookup[userId];
+                if (!currentUser) {
+                    throw new Error('Użytkownik nie istnieje');
+                }
+                
+                // Load current user's assignment
+                const assignmentSnapshot = await firebase.database().ref(`/assignments/${userId}`).once('value');
+                currentUserAssignment = assignmentSnapshot.val();
+                
+                // Add assigned user info to current user object
+                if (currentUserAssignment && userLookup[currentUserAssignment]) {
+                    currentUser.assignedUserName = userLookup[currentUserAssignment].name;
+                    currentUser.assignedUserThreads = userLookup[currentUserAssignment].threadsNick;
+                }
+                
+                // Load current user's received questions
+                const questionsSnapshot = await firebase.database().ref(`/questions/${userId}`).once('value');
+                currentUserQuestions = questionsSnapshot.val() || [];
+                
+                // Load questions asked by current user
+                await loadAskedQuestions(userId, userLookup);
+                
+                // Load settings
+                const settingsSnapshot = await firebase.database().ref('/settings').once('value');
+                settings = settingsSnapshot.val() || { mode: 'open_both' };
+                
+                // Clear the lookup data from memory after use
+                userLookup = null;
+                
+            } catch (error) {
+                console.error('Błąd ładowania danych użytkownika:', error);
+                throw error;
+            }
+        }
+
+        // Load questions asked by current user (with target user names)
+        async function loadAskedQuestions(userId, userLookup) {
+            try {
+                const allQuestionsSnapshot = await firebase.database().ref('/questions').once('value');
+                const allQuestions = allQuestionsSnapshot.val() || {};
+                
+                currentUserAskedQuestions = [];
+                Object.keys(allQuestions).forEach(targetUserId => {
+                    const targetQuestions = allQuestions[targetUserId] || [];
+                    targetQuestions.forEach((question, index) => {
+                        if (question.from === userId) {
+                            currentUserAskedQuestions.push({
+                                ...question,
+                                targetUserId: targetUserId,
+                                questionIndex: index,
+                                targetUserName: userLookup[targetUserId]?.name || 'Nieznany użytkownik'
+                            });
+                        }
+                    });
+                });
+                
+                // Sort by timestamp (newest first)
+                currentUserAskedQuestions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+            } catch (error) {
+                console.error('Błąd ładowania zadanych pytań:', error);
+            }
+        }
+
+        // Initialize Firebase with two-step loading
+        async function initSecureFirebase() {
+            try {
+                app = firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                
+                // Get current user ID from URL
+                const urlParams = new URLSearchParams(window.location.search);
+                let userId = urlParams.get('user');
+                
+                // STEP 1: Load minimal user lookup data
+                const userLookup = await loadUserLookupData();
+                
+                // If no user ID, try to find by code
+                if (!userId) {
+                    const userCode = urlParams.get('code');
+                    if (userCode) {
+                        const userEntry = Object.values(userLookup).find(user => user.code === userCode);
+                        if (userEntry) {
+                            userId = userEntry.id;
+                            // Update URL to use user ID
+                            window.history.replaceState({}, '', `?user=${userId}`);
+                        }
+                    }
+                }
+                
+                if (!userId || !userLookup[userId]) {
+                    showMessage('error', 'Użytkownik nie istnieje w bazie danych');
+                    return;
+                }
+                
+                currentUserId = userId;
+                
+                // STEP 2: Load detailed data only for current user
+                await loadCurrentUserData(userId, userLookup);
+                
+                // Setup secure listeners
+                setupSecureListeners(userId);
+                
+                updateSecureUI();
+                
+            } catch (error) {
+                console.error('Błąd inicjalizacji Firebase:', error);
+                showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
+                document.body.classList.add('theme-loaded');
+            }
+        }
+
+        // Setup listeners only for current user's data
+        function setupSecureListeners(userId) {
+            // Listen for changes to current user's questions
+            firebase.database().ref(`/questions/${userId}`).on('value', (snapshot) => {
+                currentUserQuestions = snapshot.val() || [];
+                updateReceivedQuestions();
+            });
+            
+            // Listen for changes to current user's assignment
+            firebase.database().ref(`/assignments/${userId}`).on('value', async (snapshot) => {
+                currentUserAssignment = snapshot.val();
+                
+                // Update assigned user name if needed
+                if (currentUserAssignment) {
+                    const assignedUserSnapshot = await firebase.database().ref(`/users/${currentUserAssignment}/name`).once('value');
+                    const assignedUserName = assignedUserSnapshot.val();
+                    const assignedUserThreadsSnapshot = await firebase.database().ref(`/users/${currentUserAssignment}/threadsNick`).once('value');
+                    const assignedUserThreads = assignedUserThreadsSnapshot.val();
+                    
+                    if (assignedUserName) {
+                        currentUser.assignedUserName = assignedUserName;
+                        currentUser.assignedUserThreads = assignedUserThreads;
+                    }
+                }
+                
+                updateSecureUI();
+            });
+            
+            // Listen for settings changes
+            firebase.database().ref('/settings').on('value', (snapshot) => {
+                settings = snapshot.val() || { mode: 'open_both' };
+            });
+        }
+
+        // Secure change recipient function
+        async function changeRecipient() {
             if (!currentUserId) {
                 showMessage('error', 'Najpierw załaduj swój profil');
                 return;
             }
-
-            console.log(users);
-            // Filter out the current user from possible recipients
-            const possibleRecipients = users.filter(user => user.id !== currentUserId);
-            console.log(possibleRecipients);
             
-            if (possibleRecipients.length === 0) {
-                showMessage('error', 'Brak dostępnych odbiorców');
+            try {
+                // Get minimal user list for random selection
+                const usersSnapshot = await firebase.database().ref('/users').once('value');
+                const allUsers = usersSnapshot.val() || {};
+                
+                const possibleRecipients = Object.keys(allUsers).filter(id => id !== currentUserId);
+                
+                if (possibleRecipients.length === 0) {
+                    showMessage('error', 'Brak dostępnych odbiorców');
+                    return;
+                }
+                
+                const randomIndex = Math.floor(Math.random() * possibleRecipients.length);
+                const newRecipient = possibleRecipients[randomIndex];
+                
+                // Update assignment in Firebase
+                await firebase.database().ref(`/assignments/${currentUserId}`).set(newRecipient);
+                
+                // Get new recipient's name for display
+                const newRecipientName = allUsers[newRecipient].name;
+                
+                showMessage('success', `Odbiorca zmieniony na: ${newRecipientName}`);
+                
+            } catch (error) {
+                console.error('Błąd zmiany odbiorcy:', error);
+                showMessage('error', 'Błąd zmiany odbiorcy: ' + error.message);
+            }
+        }
+
+        // Update UI function
+        function updateSecureUI() {
+            if (!currentUser) return;
+            
+            // Apply theme
+            applyTheme(currentUser);
+            
+            // Update user welcome
+            document.getElementById('userWelcome').textContent = `Witaj, ${currentUser.name}!`;
+            
+            // Update assignment info
+            if (currentUserAssignment && currentUser.assignedUserName) {
+                document.getElementById('assignmentInfo').textContent = 
+                    `Wyślij pytanie do ${currentUser.assignedUserName} (${currentUser.assignedUserThreads}):`;
+            } else {
+                document.getElementById('assignmentInfo').textContent = 'Brak dostępnego przydziału';
+            }
+            
+            updateReceivedQuestions();
+            updateAskedQuestions();
+            
+            // Show admin button if logged in
+            const loginExpiry = localStorage.getItem('adminLoggedIn');
+            const currentTime = new Date().getTime();
+            if (loginExpiry && currentTime <= parseInt(loginExpiry)) {
+                document.getElementById('adminAccessBtn').classList.remove('hidden');
+            }
+        }
+
+        // Send question with secure implementation
+        async function sendQuestion() {
+            const questionInput = document.getElementById('questionInput');
+            const questionText = questionInput.value.trim();
+            const messageDiv = document.getElementById('questionMessage');
+            
+            if (!questionText) {
+                messageDiv.innerHTML = '<div class="error-message">Proszę wpisać pytanie</div>';
                 return;
             }
-        
-            // Select random recipient
-            const randomIndex = Math.floor(Math.random() * possibleRecipients.length);
-            const newRecipient = possibleRecipients[randomIndex].id;
             
-            // Update assignment in Firebase data
-            assignments[currentUserId] = newRecipient;
-            console.log(currentUserId)
-            // Save to Firebase
-            saveDataToFirebase();
+            if (!currentUserAssignment) {
+                messageDiv.innerHTML = '<div class="error-message">Brak dostępnego przydziału</div>';
+                return;
+            }
             
-            // Update UI
-            updateUI();
-            
-            showMessage('success', `Odbiorca zmieniony na: ${users.find(u => u.id === newRecipient).name}`);
+            try {
+                const newQuestion = {
+                    text: questionText,
+                    timestamp: new Date().toLocaleString(),
+                    from: currentUserId,
+                    mode: settings.mode || 'open_both'
+                };
+                
+                // Add question to target user's questions
+                const targetQuestionsRef = firebase.database().ref(`/questions/${currentUserAssignment}`);
+                const targetQuestionsSnapshot = await targetQuestionsRef.once('value');
+                const targetQuestions = targetQuestionsSnapshot.val() || [];
+                
+                targetQuestions.push(newQuestion);
+                await targetQuestionsRef.set(targetQuestions);
+                
+                questionInput.value = '';
+                messageDiv.innerHTML = '<div class="success-message">Pytanie zostało wysłane pomyślnie!</div>';
+                
+                setTimeout(() => {
+                    messageDiv.innerHTML = '';
+                }, 3000);
+                
+                // Refresh asked questions
+                const userLookup = await loadUserLookupData();
+                await loadAskedQuestions(currentUserId, userLookup);
+                updateAskedQuestions();
+                
+            } catch (error) {
+                console.error('Błąd wysyłania pytania:', error);
+                messageDiv.innerHTML = '<div class="error-message">Błąd wysyłania pytania: ' + error.message + '</div>';
+            }
         }
-        
+
+        // Display message
+        function showMessage(type, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `${type}-message`;
+            messageDiv.textContent = text;
+            
+            document.querySelector('.container').insertAdjacentHTML('afterbegin', messageDiv.outerHTML);
+            
+            setTimeout(() => {
+                const msg = document.querySelector(`.${type}-message`);
+                if (msg) msg.remove();
+            }, type === 'error' ? 5000 : 3000);
+        }
+
         // Pre-determine theme to avoid flash
         function preloadTheme() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -808,159 +783,8 @@ document.addEventListener('DOMContentLoaded', function() {
             body.classList.add('theme-loaded');
         }
 
-        // Initialize Firebase
-        async function initFirebase() {
-            try {
-                app = firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
-                console.log(db);
-                
-                // Listen for database changes
-                const dbRef = firebase.database().ref('/');
-                dbRef.on('value', (snapshot) => {
-                    const data = snapshot.val() || {};
-                    users = data.users || [];
-                    assignments = data.assignments || {};
-                    questions = data.questions || {};
-                    settings = data.settings || { mode: 'open_both' }; // Load settings
-                    
-                    updateUI();
-                });
-                
-            } catch (error) {
-                console.error('Błąd inicjalizacji Firebase:', error);
-                showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
-                document.body.classList.add('theme-loaded');
-            }
-        }
-
-        // Display message
-        function showMessage(type, text) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `${type}-message`;
-            messageDiv.textContent = text;
-            
-            document.querySelector('.container').insertAdjacentHTML('afterbegin', messageDiv.outerHTML);
-            
-            setTimeout(() => {
-                const msg = document.querySelector(`.${type}-message`);
-                if (msg) msg.remove();
-            }, type === 'error' ? 5000 : 3000);
-        }
-
-        // Update UI after data changes
-        function updateUI() {
-            // Check if we have a valid user ID
-            const urlParams = new URLSearchParams(window.location.search);
-            let userId = urlParams.get('user');
-            
-            // If no user ID in URL, check for code
-            if (!userId) {
-                const userCode = urlParams.get('code');
-                if (userCode) {
-                    // Find user by code
-                    const user = users.find(u => u.code === userCode);
-                    if (user) {
-                        userId = user.id;
-                    }
-                }
-            }
-            
-            const user = users.find(u => u.id === userId);
-            if (!user) {
-                showMessage('error', 'Użytkownik nie istnieje w bazie danych');
-                document.body.classList.add('theme-loaded'); // Show page even with error
-                return;
-            }
-            
-            // Apply theme based on current user
-            applyTheme(user);
-            
-            currentUserId = userId;
-            const assignedUser = users.find(u => u.id === assignments[userId]);
-            
-            document.getElementById('userWelcome').textContent = `Witaj, ${user.name}!`;
-            
-            if (assignedUser) {
-                document.getElementById('assignmentInfo').textContent = `Wyślij pytanie do ${assignedUser.name} (${assignedUser.threadsNick}):`;
-            } else {
-                document.getElementById('assignmentInfo').textContent = 'Brak dostępnego przydziału';
-            }
-            
-            updateReceivedQuestions();
-            updateAskedQuestions();
-            
-            // Show admin access button if user is admin
-            const loginExpiry = localStorage.getItem('adminLoggedIn');
-            const currentTime = new Date().getTime();
-            if (loginExpiry && currentTime <= parseInt(loginExpiry)) {
-                document.getElementById('adminAccessBtn').classList.remove('hidden');
-            }
-        }
-
-        // Send question
-        function sendQuestion() {
-            const questionInput = document.getElementById('questionInput');
-            const questionText = questionInput.value.trim();
-            const messageDiv = document.getElementById('questionMessage');
-            
-            if (!questionText) {
-                messageDiv.innerHTML = '<div class="error-message">Proszę wpisać pytanie</div>';
-                return;
-            }
-            
-            if (!assignments[currentUserId]) {
-                messageDiv.innerHTML = '<div class="error-message">Brak dostępnego przydziału</div>';
-                return;
-            }
-            
-            const targetUserId = assignments[currentUserId];
-            
-            if (!questions[targetUserId]) {
-                questions[targetUserId] = [];
-            }
-            
-            questions[targetUserId].push({
-                text: questionText,
-                timestamp: new Date().toLocaleString(),
-                from: currentUserId,
-                mode: settings.mode || 'open_both' // Store current mode when question is sent
-            });
-            
-            questionInput.value = '';
-            messageDiv.innerHTML = '<div class="success-message">Pytanie zostało wysłane pomyślnie!</div>';
-            
-            setTimeout(() => {
-                messageDiv.innerHTML = '';
-            }, 3000);
-            
-            saveDataToFirebase();
-        }
-
-        // Save data to Firebase
-        async function saveDataToFirebase() {
-            if (!db) {
-                alert('Najpierw połącz się z Firebase');
-                return;
-            }
-        
-            try {
-                await firebase.database().ref('/').set({
-                    users: users,
-                    assignments: assignments,
-                    questions: questions,
-                    settings: settings, // Include settings in save
-                    lastUpdated: new Date().toISOString()
-                });
-            } catch (error) {
-                console.error('Błąd zapisu do Firebase:', error);
-                showMessage('error', 'Błąd zapisu: ' + error.message);
-            }
-        }
-
         // Update received questions with form state preservation and proper sorting (newest first)
         function updateReceivedQuestions() {
-            
             // Save which textarea had focus before update
             const focusedElement = document.activeElement;
             let focusedIndex = null;
@@ -969,15 +793,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
                 
             const receivedQuestionsDiv = document.getElementById('receivedQuestions');
-            const userQuestions = questions[currentUserId] || [];
             
-            if (userQuestions.length === 0) {
+            if (currentUserQuestions.length === 0) {
                 receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
                 return;
             }
             
             // Create array of questions with original indices for proper answer handling
-            const questionsWithIndices = userQuestions.map((question, originalIndex) => ({
+            const questionsWithIndices = currentUserQuestions.map((question, originalIndex) => ({
                 ...question,
                 originalIndex: originalIndex
             }));
@@ -1005,7 +828,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             receivedQuestionsDiv.innerHTML = '';
             questionsWithIndices.forEach((question, displayIndex) => {
-                const fromUser = users.find(u => u.id === question.from);
                 const questionItem = document.createElement('div');
                 questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
                 
@@ -1038,7 +860,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 questionItem.innerHTML = `
                     <div class="question-header">
-                        <span class="question-author">${fromUser ? fromUser.name : 'Nieznany użytkownik'}</span>
+                        <span class="question-author">${question.fromName || 'Anonimowy użytkownik'}</span>
                         <span class="question-time">${question.timestamp}</span>
                     </div>
                     <div class="question-content">${question.text}</div>
@@ -1100,52 +922,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            if (!questions[currentUserId] || !questions[currentUserId][questionIndex]) {
+            if (!currentUserQuestions || !currentUserQuestions[questionIndex]) {
                 alert('Nie znaleziono pytania');
                 return;
             }
             
-            questions[currentUserId][questionIndex].answer = {
+            // Create a copy of the questions array to modify
+            const updatedQuestions = [...currentUserQuestions];
+            
+            updatedQuestions[questionIndex].answer = {
                 text: answerText,
                 timestamp: new Date().toLocaleString(),
                 secret: isSecret,
                 mode: settings.mode || 'open_both' // Store current mode when answer is given
             };
             
-            saveDataToFirebase();
-            updateReceivedQuestions();
+            // Update Firebase with the modified questions
+            firebase.database().ref(`/questions/${currentUserId}`).set(updatedQuestions)
+                .then(() => {
+                    currentUserQuestions = updatedQuestions;
+                    updateReceivedQuestions();
+                })
+                .catch(error => {
+                    console.error('Błąd zapisywania odpowiedzi:', error);
+                    showMessage('error', 'Błąd zapisywania odpowiedzi: ' + error.message);
+                });
         }
 
         // Update asked questions with consistent styling (newest first)
         function updateAskedQuestions() {
             const askedQuestionsDiv = document.getElementById('askedQuestions');
             
-            // Find all questions asked by this user
-            const userQuestions = [];
-            Object.keys(questions).forEach(targetUserId => {
-                const targetQuestions = questions[targetUserId] || [];
-                targetQuestions.forEach(question => {
-                    if (question.from === currentUserId) {
-                        const targetUser = users.find(u => u.id === targetUserId);
-                        userQuestions.push({
-                            ...question,
-                            targetUser: targetUser,
-                            askedTo: targetUserId
-                        });
-                    }
-                });
-            });
-            
-            if (userQuestions.length === 0) {
+            if (currentUserAskedQuestions.length === 0) {
                 askedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>';
                 return;
             }
             
-            // Sort by timestamp (newest first)
-            userQuestions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            
             askedQuestionsDiv.innerHTML = '';
-            userQuestions.forEach(question => {
+            currentUserAskedQuestions.forEach(question => {
                 const questionItem = document.createElement('div');
                 questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
                 
@@ -1157,7 +971,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="answer-section">
                                 <div class="answer-item">
                                     <div class="answer-header">
-                                        <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
+                                        <span class="answer-author">${question.targetUserName || 'Nieznany użytkownik'}</span>
                                         <span class="answer-time">${question.answer.timestamp}</span>
                                     </div>
                                     <div class="answer-content">${question.answer.text}</div>
@@ -1170,7 +984,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="answer-section">
                                 <div class="answer-item">
                                     <div class="answer-header">
-                                        <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
+                                        <span class="answer-author">${question.targetUserName || 'Nieznany użytkownik'}</span>
                                         <span class="answer-time">${question.answer.timestamp}</span>
                                     </div>
                                     <div class="answer-content">${question.answer.text}</div>
@@ -1197,7 +1011,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
             preloadTheme();
-            initFirebase();
+            initSecureFirebase();
         });
     </script>
 </body>
