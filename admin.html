@@ -512,7 +512,7 @@
         let assignments = {};
         let questions = {};
         let userCodes = {}; // Maps user codes to user IDs
-        let dbRef = null;  // Add this line to declare dbRef globally
+        let dbRef = null;
 
         // Default settings
         let settings = {
@@ -523,13 +523,11 @@
         // Load settings from Firebase
         function loadSettings(data) {
             if (data && data.settings) {
-                // Preserve all existing settings, only update what we need
                 settings = {
-                    ...settings, // Keep default values
-                    ...data.settings // Override with saved values
+                    ...settings,
+                    ...data.settings
                 };
                 
-                // Update UI elements
                 if (settings.mode) {
                     const modeSelect = document.getElementById('appModeSelect');
                     if (modeSelect) {
@@ -537,7 +535,6 @@
                     }
                 }
                 
-                // Update admin password in current session
                 if (data.settings.adminPassword) {
                     ADMIN_PASSWORD = data.settings.adminPassword;
                 }
@@ -551,20 +548,16 @@
                 return;
             }
         
-            // Get the current mode from dropdown
             const newMode = document.getElementById('appModeSelect').value;
-            
-            // Create update object that only changes what we want to change
             const updates = {
                 'settings/mode': newMode
             };
             
             showLoadingStatus();
             
-            // Use update() instead of set() to only modify specific properties
             firebase.database().ref().update(updates)
                 .then(() => {
-                    settings.mode = newMode; // Update local settings
+                    settings.mode = newMode;
                     showMessage('success', 'Ustawienia zapisane!');
                     showSaveIndicator();
                 })
@@ -579,7 +572,6 @@
             const newPassword = document.getElementById('adminPasswordInput').value.trim();
             
             if (newPassword === '') {
-                // Don't do anything if password is empty
                 showMessage('warning', 'Nie wprowadzono nowego hasła - hasło pozostaje bez zmian');
                 return;
             }
@@ -591,7 +583,6 @@
         
             showLoadingStatus();
             
-            // Use update to only change the password
             firebase.database().ref('settings/adminPassword').set(newPassword)
                 .then(() => {
                     settings.adminPassword = newPassword;
@@ -624,16 +615,13 @@
                 const timeDiff = now - parseInt(loginTime);
                 
                 if (timeDiff < SESSION_DURATION) {
-                    // Valid session
                     showAdminPanel();
                     return true;
                 } else {
-                    // Session expired
                     sessionStorage.removeItem('adminLoginTime');
                 }
             }
             
-            // No valid session, show login
             showLoginScreen();
             return false;
         }
@@ -652,7 +640,6 @@
             if (password === (settings.adminPassword || ADMIN_PASSWORD)) {
                 sessionStorage.setItem('adminLoginTime', Date.now().toString());
                 showAdminPanel();
-                // Auto-initialize Firebase after successful login
                 initFirebase();
                 return true;
             }
@@ -662,8 +649,6 @@
         function logout() {
             sessionStorage.removeItem('adminLoginTime');
             showLoginScreen();
-            
-            // Reset form
             document.getElementById('passwordInput').value = '';
             document.getElementById('loginError').classList.remove('show');
         }
@@ -684,15 +669,12 @@
         // Initialize Firebase
         window.initFirebase = async function() {
             try {
-                // Initialize Firebase
                 app = firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
                 updateConnectionStatus();
                 
-                // Define dbRef after db is initialized
-                const dbRef = db.ref('/');
+                dbRef = db.ref('/');
                 
-                // Listen for database changes
                 dbRef.on('value', (snapshot) => {
                     const data = snapshot.val() || {};
                     users = data.users || [];
@@ -700,9 +682,7 @@
                     questions = data.questions || {};
                     userCodes = data.userCodes || {};
                     
-                    // Always load settings, even if they don't exist yet
                     loadSettings(data);
-                    
                     updateUI();
                     showMessage('success', 'Dane zaktualizowane z Firebase!');
                 });
@@ -767,10 +747,8 @@
             const indicator = document.getElementById('statusIndicator');
             if (db) {
                 indicator.className = 'status-indicator status-connected';
-                dbRef = db.ref('/');  // Initialize dbRef when connection is established
             } else {
                 indicator.className = 'status-indicator status-disconnected';
-                dbRef = null;
             }
         }
 
@@ -796,26 +774,22 @@
             let code;
             do {
                 code = Math.floor(100000 + Math.random() * 900000).toString();
-            } while (userCodes[code]); // Ensure uniqueness
+            } while (userCodes[code]);
             return code;
         }
         
-        // Generate user link (fixed to always use users.html)
-        function generateUserLink(userId, code) {
-            const baseUrl = window.location.href.replace('admin.html', 'users.html');
-            if (code) {
-                return `${baseUrl}?code=${code}`;  // Short link format
-            }
-            return `${baseUrl}?user=${userId}`;  // Long link format
+        // Generate user link with code only
+        function generateUserLink(code) {
+            return window.location.href.replace('admin.html', 'users.html') + '?code=' + code;
         }
         
         // Copy to clipboard
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                alert('Kod skopiowany do schowka!');
+                alert('Skopiowano do schowka!');
             }).catch(err => {
                 console.error('Błąd kopiowania:', err);
-                alert('Nie udało się skopiować kodu');
+                alert('Nie udało się skopiować');
             });
         }
         
@@ -839,8 +813,9 @@
             users.push({ 
                 id: userId, 
                 name: name,
-                code: userCode  // Add the 6-digit code
+                code: userCode
             });
+            userCodes[userCode] = userId; // Map code to user ID
             nameInput.value = '';
             updateUserList();
             saveDataToFirebase();
@@ -866,22 +841,24 @@
             userList.innerHTML = '';
             
             users.forEach(user => {
-                const longLink = generateUserLink(user.id);
-                const shortLink = user.code ? generateUserLink(user.id, user.code) : '';
+                if (!user.code) {
+                    // Ensure every user has a code
+                    user.code = generateUserCode();
+                    userCodes[user.code] = user.id;
+                }
+                
+                const userLink = generateUserLink(user.code);
                 
                 const userItem = document.createElement('div');
                 userItem.className = 'user-item';
                 userItem.innerHTML = `
                     <span class="user-name">${user.name}</span>
-                    <div class="user-link">ID: ${user.id}</div>
-                    ${user.code ? `<div class="user-link">6-digit code: ${user.code}</div>` : ''}
-                    <div class="user-link">Long link: ${longLink}</div>
-                    ${user.code ? `<div class="user-link">Short link: ${shortLink}</div>` : ''}
+                    <div class="user-code">${user.code}</div>
+                    <div class="user-link">Link: ${userLink}</div>
                     <div class="user-actions">
-                        <button onclick="window.open('${longLink}', '_blank')">Otwórz (Long)</button>
-                        ${user.code ? `<button onclick="window.open('${shortLink}', '_blank')">Otwórz (Short)</button>` : ''}
-                        <button class="copy-btn" onclick="copyToClipboard('${longLink}')">Kopiuj Long Link</button>
-                        ${user.code ? `<button class="copy-btn" onclick="copyToClipboard('${shortLink}')">Kopiuj Short Link</button>` : ''}
+                        <button onclick="window.open('${userLink}', '_blank')">Otwórz</button>
+                        <button class="copy-btn" onclick="copyToClipboard('${userLink}')">Kopiuj Link</button>
+                        <button class="copy-btn" onclick="copyToClipboard('${user.code}')">Kopiuj Kod</button>
                         <button class="remove-btn" onclick="removeUser('${user.id}')">Usuń Użytkownika</button>
                     </div>
                 `;
@@ -923,7 +900,7 @@
                 const toUser = users.find(u => u.id === assignments[fromUserId]);
                 
                 if (fromUser && toUser) {
-                    const userLink = generateUserLink(fromUser.id, fromUser.code);
+                    const userLink = generateUserLink(fromUser.code);
                     
                     const assignmentItem = document.createElement('div');
                     assignmentItem.className = 'assignment-item';
@@ -940,7 +917,6 @@
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
-            // Check login status on page load
             checkLogin();
         });
     </script>
