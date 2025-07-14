@@ -333,6 +333,16 @@
         .hidden {
             display: none;
         }
+
+        .anon-info {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+            padding: 5px;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+            display: inline-block;
+        }
         
         /* Mobile responsiveness */
         @media (max-width: 768px) {
@@ -372,6 +382,7 @@
                 <div class="input-group">
                     <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
                 </div>
+                <div id="questionModeInfo" class="anon-info"></div>
                 <button onclick="sendQuestion()">Wyślij Pytanie</button>
                 <button onclick="changeRecipient()" style="margin-top: 10px; background: var(--secondary-color);">Zmień odbiorcę losowo</button>
                 <div id="questionMessage"></div>
@@ -525,12 +536,36 @@
                     settings = data.settings || { mode: 'open_both' }; // Load settings
                     
                     updateUI();
+                    updateModeInfo();
                 });
                 
             } catch (error) {
                 console.error('Błąd inicjalizacji Firebase:', error);
                 showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
                 document.body.classList.add('theme-loaded');
+            }
+        }
+
+        // Update mode information display
+        function updateModeInfo() {
+            const questionModeInfo = document.getElementById('questionModeInfo');
+            if (!questionModeInfo) return;
+            
+            const currentMode = settings.mode || 'open_both';
+            
+            switch(currentMode) {
+                case 'anon_question':
+                    questionModeInfo.textContent = '⚠️ Twoje pytanie będzie anonimowe';
+                    break;
+                case 'anon_both':
+                    questionModeInfo.textContent = '⚠️ Twoje pytanie i odpowiedź będą anonimowe';
+                    break;
+                case 'open_question':
+                    questionModeInfo.textContent = 'Twoje pytanie będzie widoczne z Twoim imieniem';
+                    break;
+                default: // open_both
+                    questionModeInfo.textContent = 'Twoje pytanie i odpowiedź będą widoczne z imionami';
+                    break;
             }
         }
 
@@ -715,15 +750,18 @@
                         <div class="answer-section">
                             <div class="answer-item">
                                 <div class="answer-header">
-                                    <span class="answer-author">${question.answer.mode !== 'anon_both' ? 'Ty' : 'Anonim'}</span>
+                                    <span class="answer-author">${question.answer.mode === 'anon_both' || settings.mode === 'anon_both' ? 'Anonim' : 'Ty'}</span>
                                     <span class="answer-time">${question.answer.timestamp}</span>
                                 </div>
                                 <div class="answer-content">${question.answer.text}</div>
                                 ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Sekret)</div>' : ''}
+                                ${question.answer.mode === 'anon_both' || settings.mode === 'anon_both' ? 
+                                  '<div class="anon-info">Odpowiedź anonimowa</div>' : ''}
                             </div>
                         </div>
                     `;
                 } else {
+                    const isAnonAnswer = settings.mode === 'anon_both';
                     answerSection = `
                         <div class="answer-form">
                             <textarea class="answer-textarea" id="answer-${displayIndex}" placeholder="Napisz odpowiedź..."></textarea>
@@ -731,18 +769,22 @@
                                 <input type="checkbox" id="secret-${displayIndex}">
                                 <label for="secret-${displayIndex}">👀 SEKRET 👀</label>
                             </div>
+                            ${isAnonAnswer ? '<div class="anon-info">Twoja odpowiedź będzie anonimowa</div>' : ''}
                             <button class="answer-btn" onclick="sendAnswer(${question.originalIndex})">Wyślij odpowiedź</button>
                         </div>
                     `;
                 }
                 
+                const isAnonQuestion = question.mode === 'anon_question' || question.mode === 'anon_both' || 
+                                      settings.mode === 'anon_question' || settings.mode === 'anon_both';
+                
                 questionItem.innerHTML = `
                     <div class="question-header">
-                        <span class="question-author">${(question.mode !== 'anon_question' && question.mode !== 'anon_both') ? 
-                          (fromUser ? fromUser.name : 'Nieznany użytkownik') : 'Anonim'}</span>
+                        <span class="question-author">${isAnonQuestion ? 'Anonim' : (fromUser ? fromUser.name : 'Nieznany użytkownik')}</span>
                         <span class="question-time">${question.timestamp}</span>
                     </div>
                     <div class="question-content">${question.text}</div>
+                    ${isAnonQuestion ? '<div class="anon-info">Pytanie anonimowe</div>' : ''}
                     ${answerSection}
                 `;
                 receivedQuestionsDiv.prepend(questionItem);
@@ -858,12 +900,14 @@
                             <div class="answer-section">
                                 <div class="answer-item">
                                     <div class="answer-header">
-                                        <span class="answer-author">${question.answer.mode !== 'anon_both' ? 
-                                          (question.targetUser ? question.targetUser.name : 'Nieznany użytkownik') : 'Anonim'}</span>
+                                        <span class="answer-author">${question.answer.mode === 'anon_both' || settings.mode === 'anon_both' ? 
+                                          'Anonim' : (question.targetUser ? question.targetUser.name : 'Nieznany użytkownik')}</span>
                                         <span class="answer-time">${question.answer.timestamp}</span>
                                     </div>
                                     <div class="answer-content">${question.answer.text}</div>
                                     <div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>
+                                    ${question.answer.mode === 'anon_both' || settings.mode === 'anon_both' ? 
+                                      '<div class="anon-info">Odpowiedź anonimowa</div>' : ''}
                                 </div>
                             </div>
                         `;
@@ -872,11 +916,13 @@
                             <div class="answer-section">
                                 <div class="answer-item">
                                     <div class="answer-header">
-                                        <span class="answer-author">${question.answer.mode !== 'anon_both' ? 
-                                          (question.targetUser ? question.targetUser.name : 'Nieznany użytkownik') : 'Anonim'}</span>
+                                        <span class="answer-author">${question.answer.mode === 'anon_both' || settings.mode === 'anon_both' ? 
+                                          'Anonim' : (question.targetUser ? question.targetUser.name : 'Nieznany użytkownik')}</span>
                                         <span class="answer-time">${question.answer.timestamp}</span>
                                     </div>
                                     <div class="answer-content">${question.answer.text}</div>
+                                    ${question.answer.mode === 'anon_both' || settings.mode === 'anon_both' ? 
+                                      '<div class="anon-info">Odpowiedź anonimowa</div>' : ''}
                                 </div>
                             </div>
                         `;
@@ -885,12 +931,16 @@
                     answerSection = '<div class="answer-section" style="color: #888;">(Brak odpowiedzi)</div>';
                 }
                 
+                const isAnonQuestion = question.mode === 'anon_question' || question.mode === 'anon_both' || 
+                                      settings.mode === 'anon_question' || settings.mode === 'anon_both';
+                
                 questionItem.innerHTML = `
                     <div class="question-header">
                         <span class="question-author">Ty</span>
                         <span class="question-time">${question.timestamp}</span>
                     </div>
                     <div class="question-content">${question.text}</div>
+                    ${isAnonQuestion ? '<div class="anon-info">Pytanie anonimowe</div>' : ''}
                     ${answerSection}
                 `;
                 askedQuestionsDiv.appendChild(questionItem);
