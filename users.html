@@ -407,6 +407,7 @@
         let assignments = {};
         let questions = {};
         let currentUserId = null;
+        let settings = { mode: 'open_both' }; // Default mode
         
         // Firebase configuration
         const firebaseConfig = {
@@ -521,6 +522,7 @@
                     users = data.users || [];
                     assignments = data.assignments || {};
                     questions = data.questions || {};
+                    settings = data.settings || { mode: 'open_both' }; // Load settings
                     
                     updateUI();
                 });
@@ -528,7 +530,6 @@
             } catch (error) {
                 console.error('Błąd inicjalizacji Firebase:', error);
                 showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
-                // Still show the page even if Firebase fails
                 document.body.classList.add('theme-loaded');
             }
         }
@@ -622,7 +623,8 @@
             questions[targetUserId].push({
                 text: questionText,
                 timestamp: new Date().toLocaleString(),
-                from: currentUserId
+                from: currentUserId,
+                mode: settings.mode || 'open_both' // Store current mode when question is sent
             });
             
             questionInput.value = '';
@@ -632,7 +634,6 @@
                 messageDiv.innerHTML = '';
             }, 3000);
             
-            // Save to Firebase
             saveDataToFirebase();
         }
 
@@ -642,12 +643,13 @@
                 alert('Najpierw połącz się z Firebase');
                 return;
             }
-
+        
             try {
                 await firebase.database().ref('/').set({
                     users: users,
                     assignments: assignments,
                     questions: questions,
+                    settings: settings, // Include settings in save
                     lastUpdated: new Date().toISOString()
                 });
             } catch (error) {
@@ -775,18 +777,15 @@
             const answerTextarea = document.querySelector(`textarea[id^="answer-"]`);
             const secretCheckbox = document.querySelector(`input[id^="secret-"]:checked`);
             
-            // Find the correct textarea and checkbox for this question
             const allTextareas = document.querySelectorAll('textarea[id^="answer-"]');
             const allCheckboxes = document.querySelectorAll('input[id^="secret-"]');
             
             let answerText = '';
             let isSecret = false;
             
-            // Find the textarea that contains text (assuming user is answering one question at a time)
             for (let textarea of allTextareas) {
                 if (textarea.value.trim()) {
                     answerText = textarea.value.trim();
-                    // Get the corresponding checkbox
                     const textareaIndex = textarea.id.replace('answer-', '');
                     const checkbox = document.getElementById(`secret-${textareaIndex}`);
                     if (checkbox) {
@@ -809,7 +808,8 @@
             questions[currentUserId][questionIndex].answer = {
                 text: answerText,
                 timestamp: new Date().toLocaleString(),
-                secret: isSecret
+                secret: isSecret,
+                mode: settings.mode || 'open_both' // Store current mode when answer is given
             };
             
             saveDataToFirebase();
