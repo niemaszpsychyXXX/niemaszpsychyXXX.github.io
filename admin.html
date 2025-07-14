@@ -512,6 +512,7 @@
         let assignments = {};
         let questions = {};
         let userCodes = {}; // Maps user codes to user IDs
+        let dbRef = null;  // Add this line to declare dbRef globally
 
         let settings = {
             mode: "open_both",
@@ -658,38 +659,41 @@
 
         // Initialize Firebase
         window.initFirebase = async function() {
-            try {
-                // Initialize Firebase
-                app = firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
-                updateConnectionStatus();
+        try {
+            // Initialize Firebase
+            app = firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            updateConnectionStatus();
+            
+            // Define dbRef after db is initialized
+            const dbRef = db.ref('/');
+            
+            // Listen for database changes
+            dbRef.on('value', (snapshot) => {
+                const data = snapshot.val() || {};
+                users = data.users || [];
+                assignments = data.assignments || {};
+                questions = data.questions || {};
+                userCodes = data.userCodes || {};
                 
-                // Listen for database changes
-                dbRef.on('value', (snapshot) => {
-                    const data = snapshot.val() || {};
-                    users = data.users || [];
-                    assignments = data.assignments || {};
-                    questions = data.questions || {};
-                    userCodes = data.userCodes || {};
-                    
-                    // Load settings if they exist
-                    if (data.settings) {
-                        loadSettings(data);
-                    }
-                    
-                    updateUI();
-                    showMessage('success', 'Dane zaktualizowane z Firebase!');
-                });
+                // Load settings if they exist
+                if (data.settings) {
+                    loadSettings(data);
+                }
                 
-                showMessage('success', 'Połączono z Firebase!');
-                return true;
-                
-            } catch (error) {
-                console.error('Błąd inicjalizacji Firebase:', error);
-                showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
-                return false;
-            }
-        };
+                updateUI();
+                showMessage('success', 'Dane zaktualizowane z Firebase!');
+            });
+            
+            showMessage('success', 'Połączono z Firebase!');
+            return true;
+            
+        } catch (error) {
+            console.error('Błąd inicjalizacji Firebase:', error);
+            showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
+            return false;
+        }
+    };
 
         // Save data to Firebase
         window.saveDataToFirebase = async function() {
@@ -741,8 +745,10 @@
             const indicator = document.getElementById('statusIndicator');
             if (db) {
                 indicator.className = 'status-indicator status-connected';
+                dbRef = db.ref('/');  // Initialize dbRef when connection is established
             } else {
                 indicator.className = 'status-indicator status-disconnected';
+                dbRef = null;
             }
         }
 
