@@ -427,9 +427,9 @@
                 return;
             }
 
-            console.log(users(
+            console.log(users);
             // Filter out the current user from possible recipients
-            let possibleRecipients = users.filter(user => user.id !== currentUserId);
+            const possibleRecipients = users.filter(user => user.id !== currentUserId);
             console.log(possibleRecipients);
             
             if (possibleRecipients.length === 0) {
@@ -517,7 +517,7 @@
             try {
                 app = firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
-                console.log(database)
+                console.log(database);
                 
                 // Listen for database changes
                 const dbRef = firebase.database().ref('/');
