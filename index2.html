@@ -292,12 +292,12 @@
             switch (privacyMode) {
                 case 'open_both':
                     return userName || `Użytkownik (${userId.substring(0, 6)}...)`;
-                case 'anon_questions':
+                case 'anon_question':
                     if (isQuestion) {
                         return 'Anonim';
                     }
                     return userName || `Użytkownik (${userId.substring(0, 6)}...)`;
-                case 'anon_answers':
+                case 'anon_answer':
                     if (!isQuestion) {
                         return 'Anonim';
                     }
