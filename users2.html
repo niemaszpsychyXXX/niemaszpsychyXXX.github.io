@@ -430,7 +430,7 @@
             console.log(users(
             // Filter out the current user from possible recipients
             let possibleRecipients = users.filter(user => user.id !== currentUserId);
-            console.log(possibleRecipients)
+            console.log(possibleRecipients);
             
             if (possibleRecipients.length === 0) {
                 showMessage('error', 'Brak dostępnych odbiorców');
