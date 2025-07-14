@@ -514,20 +514,33 @@
         let userCodes = {}; // Maps user codes to user IDs
         let dbRef = null;  // Add this line to declare dbRef globally
 
+        // Default settings
         let settings = {
             mode: "open_both",
-            adminPassword: "adminpass" // Default password
+            adminPassword: "adminpass"
         };
 
         // Load settings from Firebase
         function loadSettings(data) {
-            if (data.settings) {
-                settings = data.settings;
-                document.getElementById('appModeSelect').value = settings.mode || "open_both";
-            }
-            if (data.settings?.adminPassword) {
-                settings.adminPassword = data.settings.adminPassword;
-                ADMIN_PASSWORD = settings.adminPassword; // Update the current session password
+            if (data && data.settings) {
+                // Preserve all existing settings, only update what we need
+                settings = {
+                    ...settings, // Keep default values
+                    ...data.settings // Override with saved values
+                };
+                
+                // Update UI elements
+                if (settings.mode) {
+                    const modeSelect = document.getElementById('appModeSelect');
+                    if (modeSelect) {
+                        modeSelect.value = settings.mode;
+                    }
+                }
+                
+                // Update admin password in current session
+                if (data.settings.adminPassword) {
+                    ADMIN_PASSWORD = data.settings.adminPassword;
+                }
             }
         }
         
@@ -538,11 +551,20 @@
                 return;
             }
         
-            settings.mode = document.getElementById('appModeSelect').value;
+            // Get the current mode from dropdown
+            const newMode = document.getElementById('appModeSelect').value;
+            
+            // Create update object that only changes what we want to change
+            const updates = {
+                'settings/mode': newMode
+            };
             
             showLoadingStatus();
-            firebase.database().ref('settings').set(settings)
+            
+            // Use update() instead of set() to only modify specific properties
+            firebase.database().ref().update(updates)
                 .then(() => {
+                    settings.mode = newMode; // Update local settings
                     showMessage('success', 'Ustawienia zapisane!');
                     showSaveIndicator();
                 })
@@ -566,12 +588,13 @@
                 return;
             }
         
-            settings.adminPassword = newPassword;
-            ADMIN_PASSWORD = newPassword; // Update current session password
-            
             showLoadingStatus();
+            
+            // Use update to only change the password
             firebase.database().ref('settings/adminPassword').set(newPassword)
                 .then(() => {
+                    settings.adminPassword = newPassword;
+                    ADMIN_PASSWORD = newPassword;
                     showMessage('success', 'Hasło zaktualizowane!');
                     showSaveIndicator();
                     document.getElementById('adminPasswordInput').value = '';
@@ -658,42 +681,41 @@
         });
 
         // Initialize Firebase
+        // Initialize Firebase
         window.initFirebase = async function() {
-        try {
-            // Initialize Firebase
-            app = firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            updateConnectionStatus();
-            
-            // Define dbRef after db is initialized
-            const dbRef = db.ref('/');
-            
-            // Listen for database changes
-            dbRef.on('value', (snapshot) => {
-                const data = snapshot.val() || {};
-                users = data.users || [];
-                assignments = data.assignments || {};
-                questions = data.questions || {};
-                userCodes = data.userCodes || {};
+            try {
+                // Initialize Firebase
+                app = firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                updateConnectionStatus();
                 
-                // Load settings if they exist
-                if (data.settings) {
+                // Define dbRef after db is initialized
+                const dbRef = db.ref('/');
+                
+                // Listen for database changes
+                dbRef.on('value', (snapshot) => {
+                    const data = snapshot.val() || {};
+                    users = data.users || [];
+                    assignments = data.assignments || {};
+                    questions = data.questions || {};
+                    userCodes = data.userCodes || {};
+                    
+                    // Always load settings, even if they don't exist yet
                     loadSettings(data);
-                }
+                    
+                    updateUI();
+                    showMessage('success', 'Dane zaktualizowane z Firebase!');
+                });
                 
-                updateUI();
-                showMessage('success', 'Dane zaktualizowane z Firebase!');
-            });
-            
-            showMessage('success', 'Połączono z Firebase!');
-            return true;
-            
-        } catch (error) {
-            console.error('Błąd inicjalizacji Firebase:', error);
-            showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
-            return false;
-        }
-    };
+                showMessage('success', 'Połączono z Firebase!');
+                return true;
+                
+            } catch (error) {
+                console.error('Błąd inicjalizacji Firebase:', error);
+                showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
+                return false;
+            }
+        };
 
         // Save data to Firebase
         window.saveDataToFirebase = async function() {
