@@ -531,10 +531,16 @@
                 const dbRef = firebase.database().ref('/');
                 dbRef.on('value', (snapshot) => {
                     const data = snapshot.val() || {};
-                    users = data.users || [];
+                    // users = data.users || [];
+                    users = (data.users || []).map(user => ({
+                        id: user.id,
+                        name: user.name,
+                        threadsNick: user.threadsNick,
+                        // Don't include: code, email, or other sensitive fields
+                    }));
                     assignments = data.assignments || {};
                     questions = data.questions || {};
-                    settings = data.settings || { mode: 'open_both' }; // Load settings
+                    settings = data.settings || {}; // Load settings
                     
                     updateUI();
                 });
