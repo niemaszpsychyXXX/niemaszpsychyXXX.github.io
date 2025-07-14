@@ -211,8 +211,10 @@
         let db = null;
         let questionsRef = null;
         let usersRef = null;
+        let settingsRef = null;
         let usersData = {};
         let lastDisplayedData = null;
+        let privacyMode = 'open_both'; // Default mode
 
         function initFirebase() {
             try {
@@ -220,6 +222,7 @@
                 db = firebase.database();
                 questionsRef = db.ref('questions');
                 usersRef = db.ref('users');
+                settingsRef = db.ref('settings');
                 
                 // Add connection state listener
                 const connectedRef = db.ref(".info/connected");
@@ -234,23 +237,44 @@
                     }
                 });
 
-                // First load users
-                usersRef.once('value').then((snapshot) => {
-                    const users = snapshot.val() || [];
-                    users.forEach(user => {
-                        usersData[user.id] = user.name;
-                    });
+                // Load settings first
+                settingsRef.once('value').then((snapshot) => {
+                    const settings = snapshot.val() || {};
+                    privacyMode = settings.mode || 'open_both';
                     
-                    // Then load questions
-                    questionsRef.on('value', (snapshot) => {
-                        const questionsData = snapshot.val() || {};
-                        displayQuestionsFromFirebase(questionsData);
-                    }, (error) => {
-                        console.error("Firebase read failed:", error);
-                        document.getElementById('connectionStatus').innerHTML = 
-                            '<span class="status-indicator status-disconnected"></span> Błąd odczytu danych: ' + error.message;
-                        document.getElementById('connectionStatus').className = "status-message error-message";
+                    // Load users
+                    usersRef.once('value').then((snapshot) => {
+                        const users = snapshot.val() || [];
+                        users.forEach(user => {
+                            usersData[user.id] = user.name;
+                        });
+                        
+                        // Then load questions
+                        questionsRef.on('value', (snapshot) => {
+                            const questionsData = snapshot.val() || {};
+                            displayQuestionsFromFirebase(questionsData);
+                        }, (error) => {
+                            console.error("Firebase read failed:", error);
+                            document.getElementById('connectionStatus').innerHTML = 
+                                '<span class="status-indicator status-disconnected"></span> Błąd odczytu danych: ' + error.message;
+                            document.getElementById('connectionStatus').className = "status-message error-message";
+                        });
                     });
+                });
+                
+                // Listen for settings changes
+                settingsRef.on('value', (snapshot) => {
+                    const settings = snapshot.val() || {};
+                    const newMode = settings.mode || 'open_both';
+                    if (newMode !== privacyMode) {
+                        privacyMode = newMode;
+                        // Force refresh of questions display
+                        lastDisplayedData = null;
+                        questionsRef.once('value').then((snapshot) => {
+                            const questionsData = snapshot.val() || {};
+                            displayQuestionsFromFirebase(questionsData);
+                        });
+                    }
                 });
                 
                 return true;
@@ -260,6 +284,28 @@
                     '<span class="status-indicator status-disconnected"></span> Błąd inicjalizacji Firebase: ' + error.message;
                 document.getElementById('connectionStatus').className = "status-message error-message";
                 return false;
+            }
+        }
+
+        // Get display name based on privacy mode
+        function getDisplayName(userId, userName, isQuestion) {
+            switch (privacyMode) {
+                case 'open_both':
+                    return userName || `Użytkownik (${userId.substring(0, 6)}...)`;
+                case 'anon_questions':
+                    if (isQuestion) {
+                        return 'Anonim';
+                    }
+                    return userName || `Użytkownik (${userId.substring(0, 6)}...)`;
+                case 'anon_answers':
+                    if (!isQuestion) {
+                        return 'Anonim';
+                    }
+                    return userName || `Użytkownik (${userId.substring(0, 6)}...)`;
+                case 'anon_both':
+                    return 'Anonim';
+                default:
+                    return userName || `Użytkownik (${userId.substring(0, 6)}...)`;
             }
         }
 
@@ -298,8 +344,8 @@
                     allQuestions.push({
                         ...question,
                         askedTo: userId,
-                        askedToName: usersData[userId] || `Użytkownik (${userId.substring(0, 6)}...)`,
-                        askedByName: usersData[question.from] || `Użytkownik (${question.from.substring(0, 6)}...)`
+                        askedToName: getDisplayName(userId, usersData[userId], false),
+                        askedByName: getDisplayName(question.from, usersData[question.from], true)
                     });
                 });
             });
@@ -317,8 +363,8 @@
                 return timeB - timeA;
             });
             
-            // Check if data has actually changed
-            const currentDataHash = JSON.stringify(allQuestions);
+            // Check if data has actually changed (include privacy mode in hash)
+            const currentDataHash = JSON.stringify(allQuestions) + privacyMode;
             if (currentDataHash === lastDisplayedData) {
                 return; // No changes, don't update DOM
             }
