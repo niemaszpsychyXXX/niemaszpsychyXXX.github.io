@@ -429,7 +429,7 @@
 
             console.log(users(
             // Filter out the current user from possible recipients
-            const possibleRecipients = users.filter(user => user.id !== currentUserId);
+            let possibleRecipients = users.filter(user => user.id !== currentUserId);
             console.log(possibleRecipients)
             
             if (possibleRecipients.length === 0) {
