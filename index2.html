@@ -67,14 +67,14 @@
             transform: scale(1.05);
         }
         
-        .menu-toggle svg {
+        .menu-toggle img {
             width: 24px;
             height: 24px;
-            fill: white;
             transition: transform 0.3s;
+            filter: brightness(0) invert(1);
         }
         
-        .menu-toggle.open svg {
+        .menu-toggle.open img {
             transform: rotate(45deg);
         }
         
@@ -331,9 +331,7 @@
 </head>
 <body>
     <button class="menu-toggle" id="menuToggle">
-        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-            <use href="Donut.svg"></use>
-        </svg>
+        <img src="Donut.svg" alt="Menu" />
     </button>
     
     <div class="sidebar" id="sidebar">
