@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -334,6 +333,41 @@
             color: #666;
         }
         
+        .load-more-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .load-more-btn {
+            background: #b6196e;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .load-more-btn:hover {
+            background: #9a1460;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
         @media (max-width: 768px) {
             body {
                 padding: 20px 10px;
@@ -415,6 +449,9 @@
             <div id="questionsList">
                 <p style="text-align: center; color: #666;">Ładowanie pytań...</p>
             </div>
+            <div id="loadMoreContainer" class="load-more-container" style="display: none;">
+                <button id="loadMoreBtn" class="load-more-btn">Załaduj więcej</button>
+            </div>
         </div>
     </div>
 
@@ -439,8 +476,14 @@
         let usersRef = null;
         let usersData = {};
         let allQuestions = [];
+        let displayedQuestions = [];
+        let currentDisplayCount = 0;
+        const INITIAL_LOAD_COUNT = 50;
+        const LOAD_MORE_COUNT = 20;
+        let isLoadingMore = false;
+        let hasMoreQuestions = true;
 
-        // Session storage for reactions
+        // Session storage for reactions - now stores an object of reaction types per question
         let sessionReactions = JSON.parse(sessionStorage.getItem('reactions')) || {};
 
         // Available reaction emojis
@@ -461,6 +504,9 @@
         const dateFilter = document.getElementById('dateFilter');
         const resetFilters = document.getElementById('resetFilters');
         const activeFilters = document.getElementById('activeFilters');
+        const questionsList = document.getElementById('questionsList');
+        const loadMoreContainer = document.getElementById('loadMoreContainer');
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
 
         // Initialize Firebase
         function initFirebase() {
@@ -490,15 +536,7 @@
                     });
                     
                     // Then load questions
-                    questionsRef.on('value', function(snapshot) {
-                        const questionsData = snapshot.val() || {};
-                        processQuestionsFromFirebase(questionsData);
-                    }, function(error) {
-                        console.error("Firebase read failed:", error);
-                        document.getElementById('connectionStatus').innerHTML = 
-                            '<span class="status-indicator status-disconnected"></span> Błąd odczytu danych: ' + error.message;
-                        document.getElementById('connectionStatus').className = "status-message error-message";
-                    });
+                    loadInitialQuestions();
                 });
                 
                 return true;
@@ -511,6 +549,21 @@
             }
         }
 
+        // Load initial batch of questions
+        function loadInitialQuestions() {
+            questionsList.innerHTML = '<p style="text-align: center; color: #666;">Ładowanie pytań...</p>';
+            
+            questionsRef.once('value').then(function(snapshot) {
+                const questionsData = snapshot.val() || {};
+                processQuestionsFromFirebase(questionsData);
+            }).catch(function(error) {
+                console.error("Firebase read failed:", error);
+                document.getElementById('connectionStatus').innerHTML = 
+                    '<span class="status-indicator status-disconnected"></span> Błąd odczytu danych: ' + error.message;
+                document.getElementById('connectionStatus').className = "status-message error-message";
+            });
+        }
+
         // Process questions from Firebase
         function processQuestionsFromFirebase(questionsData) {
             allQuestions = [];
@@ -519,6 +572,7 @@
             
             if (!questionsData || Object.keys(questionsData).length === 0) {
                 displayQuestions([]);
+                loadMoreContainer.style.display = 'none';
                 return;
             }
             
@@ -562,7 +616,17 @@
                 return timeB - timeA;
             });
             
+            // Reset display counters
+            currentDisplayCount = 0;
+            displayedQuestions = [];
+            hasMoreQuestions = allQuestions.length > 0;
+            
+            // Apply filters and load initial batch
             applyFilters();
+            
+            // Setup scroll event listener for infinite scroll
+            window.addEventListener('scroll', handleScroll);
+            loadMoreBtn.addEventListener('click', loadMoreQuestions);
         }
 
         // Populate dropdown with unique values
@@ -627,8 +691,13 @@
                 });
             }
             
+            // Reset display counters for filtered questions
+            displayedQuestions = filteredQuestions;
+            currentDisplayCount = 0;
+            hasMoreQuestions = filteredQuestions.length > 0;
+            
             updateActiveFiltersText(questionAuthor, answerAuthor, dateRange);
-            displayQuestions(filteredQuestions);
+            loadMoreQuestions(true); // Load initial batch
         }
 
         // Update active filters text
@@ -661,17 +730,77 @@
             applyFilters();
         }
 
+        // Load more questions
+        function loadMoreQuestions(isInitialLoad = false) {
+            if (isLoadingMore || !hasMoreQuestions) return;
+            
+            isLoadingMore = true;
+            
+            // Show loading state
+            if (!isInitialLoad) {
+                loadMoreBtn.disabled = true;
+                loadMoreBtn.innerHTML = 'Ładowanie <span class="loading-spinner"></span>';
+            }
+            
+            // Simulate loading delay for demo purposes
+            setTimeout(() => {
+                const nextBatchSize = isInitialLoad ? INITIAL_LOAD_COUNT : LOAD_MORE_COUNT;
+                const nextBatch = displayedQuestions.slice(currentDisplayCount, currentDisplayCount + nextBatchSize);
+                
+                if (isInitialLoad) {
+                    // Clear existing content for initial load
+                    questionsList.innerHTML = '';
+                }
+                
+                if (nextBatch.length > 0) {
+                    displayQuestions(nextBatch, !isInitialLoad);
+                    currentDisplayCount += nextBatch.length;
+                }
+                
+                // Check if there are more questions to load
+                hasMoreQuestions = currentDisplayCount < displayedQuestions.length;
+                
+                // Update load more button visibility
+                if (hasMoreQuestions) {
+                    loadMoreContainer.style.display = 'block';
+                } else {
+                    loadMoreContainer.style.display = 'none';
+                }
+                
+                // Reset loading state
+                isLoadingMore = false;
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.textContent = 'Załaduj więcej';
+            }, 300);
+        }
+
+        // Handle scroll event for infinite scroll
+        function handleScroll() {
+            if (isLoadingMore || !hasMoreQuestions) return;
+            
+            const scrollPosition = window.scrollY;
+            const windowHeight = window.innerHeight;
+            const documentHeight = document.documentElement.scrollHeight;
+            
+            // Load more when 80% scrolled
+            if (scrollPosition + windowHeight >= documentHeight * 0.8) {
+                loadMoreQuestions();
+            }
+        }
+
         // Display questions
-        function displayQuestions(questions) {
-            const questionsList = document.getElementById('questionsList');
+        function displayQuestions(questions, append = false) {
+            if (!append) {
+                questionsList.innerHTML = '';
+            }
             
             if (questions.length === 0) {
                 questionsList.innerHTML = '<div class="no-results">Nie znaleziono pytań pasujących do wybranych filtrów.</div>';
+                loadMoreContainer.style.display = 'none';
                 return;
             }
             
-            const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-            questionsList.innerHTML = '';
+            const fragment = document.createDocumentFragment();
             
             questions.forEach(function(question) {
                 const qaItem = document.createElement('div');
@@ -685,7 +814,8 @@
                 
                 Object.entries(availableReactions).forEach(([reactionType, emoji]) => {
                     const count = question.reactions && question.reactions[reactionType] ? question.reactions[reactionType] : 0;
-                    const isActive = sessionReactions[questionId] === reactionType;
+                    // Check if this reaction type is active for this question
+                    const isActive = sessionReactions[questionId] && sessionReactions[questionId].includes(reactionType);
                     
                     reactionsHtml += `
                         <button class="reaction-btn ${isActive ? 'active' : ''}" 
@@ -718,8 +848,10 @@
                     </div>
                 `;
                 
-                questionsList.appendChild(qaItem);
+                fragment.appendChild(qaItem);
             });
+            
+            questionsList.appendChild(fragment);
             
             // Add event listeners to reaction buttons
             document.querySelectorAll('.reaction-btn').forEach(button => {
@@ -728,30 +860,19 @@
                     const reactionType = this.getAttribute('data-reaction');
                     const firebasePath = this.getAttribute('data-firebase-path');
                     
-                    // Check if user already reacted to this question
-                    const previousReaction = sessionReactions[questionId];
+                    // Check if user already has this reaction for this question
+                    const hasReaction = sessionReactions[questionId] && sessionReactions[questionId].includes(reactionType);
                     
-                    if (previousReaction === reactionType) {
-                        // User clicked the same reaction - remove it
+                    if (hasReaction) {
+                        // User clicked an active reaction - remove it
                         removeReaction(questionId, reactionType, firebasePath);
                         this.classList.remove('active');
                     } else {
-                        // User clicked a different reaction
-                        if (previousReaction) {
-                            // Remove previous reaction first
-                            removeReaction(questionId, previousReaction, firebasePath);
-                            document.querySelector(`.reaction-btn[data-question-id="${questionId}"][data-reaction="${previousReaction}"]`).classList.remove('active');
-                        }
-                        
-                        // Add new reaction
+                        // User clicked an inactive reaction - add it
                         addReaction(questionId, reactionType, firebasePath);
                         this.classList.add('active');
                     }
                 });
-            });
-            
-            requestAnimationFrame(function() {
-                window.scrollTo(0, scrollPosition);
             });
         }
         
@@ -768,6 +889,15 @@
                     question.reactions = {};
                 }
                 
+                // Initialize session reactions for this question if they don't exist
+                if (!sessionReactions[questionId]) {
+                    sessionReactions[questionId] = [];
+                }
+                
+                // Add reaction to session storage
+                sessionReactions[questionId].push(reactionType);
+                sessionStorage.setItem('reactions', JSON.stringify(sessionReactions));
+                
                 // Increment reaction count locally
                 if (!question.reactions[reactionType]) {
                     question.reactions[reactionType] = 0;
@@ -783,8 +913,10 @@
                     })
                     .catch(error => {
                         console.error('Error adding reaction:', error);
-                        // Rollback local change if Firebase update fails
+                        // Rollback local changes if Firebase update fails
                         question.reactions[reactionType]--;
+                        sessionReactions[questionId] = sessionReactions[questionId].filter(r => r !== reactionType);
+                        sessionStorage.setItem('reactions', JSON.stringify(sessionReactions));
                     });
                 
                 // Update the UI
@@ -792,10 +924,6 @@
                 if (countElement) {
                     countElement.textContent = question.reactions[reactionType];
                 }
-                
-                // Store in session
-                sessionReactions[questionId] = reactionType;
-                sessionStorage.setItem('reactions', JSON.stringify(sessionReactions));
             }
         }
         
@@ -807,6 +935,15 @@
             );
             
             if (question && question.reactions && question.reactions[reactionType]) {
+                // Remove reaction from session storage
+                if (sessionReactions[questionId]) {
+                    sessionReactions[questionId] = sessionReactions[questionId].filter(r => r !== reactionType);
+                    if (sessionReactions[questionId].length === 0) {
+                        delete sessionReactions[questionId];
+                    }
+                    sessionStorage.setItem('reactions', JSON.stringify(sessionReactions));
+                }
+                
                 // Decrement reaction count locally
                 question.reactions[reactionType]--;
                 if (question.reactions[reactionType] <= 0) {
@@ -828,11 +965,16 @@
                     })
                     .catch(error => {
                         console.error('Error removing reaction:', error);
-                        // Rollback local change if Firebase update fails
+                        // Rollback local changes if Firebase update fails
                         if (!question.reactions[reactionType]) {
                             question.reactions[reactionType] = 0;
                         }
                         question.reactions[reactionType]++;
+                        if (!sessionReactions[questionId]) {
+                            sessionReactions[questionId] = [];
+                        }
+                        sessionReactions[questionId].push(reactionType);
+                        sessionStorage.setItem('reactions', JSON.stringify(sessionReactions));
                     });
                 
                 // Update the UI
@@ -840,10 +982,6 @@
                 if (countElement) {
                     countElement.textContent = question.reactions[reactionType] || 0;
                 }
-                
-                // Remove from session storage
-                delete sessionReactions[questionId];
-                sessionStorage.setItem('reactions', JSON.stringify(sessionReactions));
             }
         }
 
