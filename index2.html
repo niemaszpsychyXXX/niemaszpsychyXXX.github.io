@@ -443,14 +443,16 @@
             
             // Filter by question author
             if (questionAuthor) {
-                filteredQuestions = filteredQuestions.filter(q => 
-                    q.askedByName.toLowerCase().includes(questionAuthor)
+                filteredQuestions = filteredQuestions.filter(function(q) {
+                    return q.askedByName.toLowerCase().includes(questionAuthor);
+                });
             }
             
             // Filter by answer author
             if (answerAuthor) {
-                filteredQuestions = filteredQuestions.filter(q => 
-                    q.askedToName.toLowerCase().includes(answerAuthor))
+                filteredQuestions = filteredQuestions.filter(function(q) {
+                    return q.askedToName.toLowerCase().includes(answerAuthor);
+                });
             }
             
             // Filter by date
@@ -473,7 +475,7 @@
                         break;
                 }
                 
-                filteredQuestions = filteredQuestions.filter(q => {
+                filteredQuestions = filteredQuestions.filter(function(q) {
                     if (!q.answer || !q.answer.timestamp) return false;
                     
                     const answerDate = new Date(q.answer.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3'));
@@ -491,8 +493,8 @@
         function updateActiveFiltersText(questionAuthor, answerAuthor, dateRange) {
             let filters = [];
             
-            if (questionAuthor) filters.push(`pytania: "${questionAuthor}"`);
-            if (answerAuthor) filters.push(`odpowiedzi: "${answerAuthor}"`);
+            if (questionAuthor) filters.push('pytania: "' + questionAuthor + '"');
+            if (answerAuthor) filters.push('odpowiedzi: "' + answerAuthor + '"');
             
             if (dateRange !== 'all') {
                 const dateTexts = {
@@ -501,13 +503,13 @@
                     'month': 'ostatni miesiąc',
                     'year': 'ostatni rok'
                 };
-                filters.push(`data: ${dateTexts[dateRange]}`);
+                filters.push('data: ' + dateTexts[dateRange]);
             }
             
             if (filters.length === 0) {
                 activeFilters.textContent = 'Wyświetlane: wszystkie pytania';
             } else {
-                activeFilters.textContent = `Filtry: ${filters.join(', ')}`;
+                activeFilters.textContent = 'Filtry: ' + filters.join(', ');
             }
         }
         
@@ -545,17 +547,17 @@
                 });
 
                 // First load users
-                usersRef.once('value').then((snapshot) => {
+                usersRef.once('value').then(function(snapshot) {
                     const users = snapshot.val() || [];
-                    users.forEach(user => {
+                    users.forEach(function(user) {
                         usersData[user.id] = user.name;
                     });
                     
                     // Then load questions
-                    questionsRef.on('value', (snapshot) => {
+                    questionsRef.on('value', function(snapshot) {
                         const questionsData = snapshot.val() || {};
                         processQuestionsFromFirebase(questionsData);
-                    }, (error) => {
+                    }, function(error) {
                         console.error("Firebase read failed:", error);
                         document.getElementById('connectionStatus').innerHTML = 
                             '<span class="status-indicator status-disconnected"></span> Błąd odczytu danych: ' + error.message;
@@ -582,10 +584,10 @@
                 return;
             }
             
-            Object.keys(questionsData).forEach(userId => {
+            Object.keys(questionsData).forEach(function(userId) {
                 const userQuestions = questionsData[userId] || [];
                 
-                userQuestions.forEach(question => {
+                userQuestions.forEach(function(question) {
                     // Skip questions without answers
                     if (!question.answer) {
                         return;
@@ -605,14 +607,14 @@
                     allQuestions.push({
                         ...question,
                         askedTo: userId,
-                        askedToName: usersData[userId] || `Użytkownik (${userId.substring(0, 6)}...)`,
-                        askedByName: usersData[question.from] || `Użytkownik (${question.from.substring(0, 6)}...)`
+                        askedToName: usersData[userId] || 'Użytkownik (' + userId.substring(0, 6) + '...)',
+                        askedByName: usersData[question.from] || 'Użytkownik (' + question.from.substring(0, 6) + '...)'
                     });
                 });
             });
             
             // Sort all questions by answer timestamp (newest first)
-            allQuestions.sort((a, b) => {
+            allQuestions.sort(function(a, b) {
                 const timeA = a.answer.timestamp ? new Date(a.answer.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
                 const timeB = b.answer.timestamp ? new Date(b.answer.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3')).getTime() : 0;
                 return timeB - timeA;
@@ -638,7 +640,7 @@
             questionsList.innerHTML = '';
             
             // Display all questions
-            questions.forEach(question => {
+            questions.forEach(function(question) {
                 const qaItem = document.createElement('div');
                 qaItem.className = 'qa-item';
                 
@@ -664,7 +666,7 @@
             });
             
             // Restore scroll position after DOM update
-            requestAnimationFrame(() => {
+            requestAnimationFrame(function() {
                 window.scrollTo(0, scrollPosition);
             });
         }
