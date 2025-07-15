@@ -44,7 +44,7 @@
         }
         
         .menu-toggle {
-            position: fixed;
+            position: absolute;
             top: 20px;
             left: 20px;
             background: #b6196e;
@@ -53,7 +53,6 @@
             border-radius: 50%;
             width: 50px;
             height: 50px;
-            font-size: 20px;
             cursor: pointer;
             z-index: 1002;
             display: flex;
@@ -66,6 +65,16 @@
         .menu-toggle:hover {
             background: #9a1460;
             transform: scale(1.05);
+        }
+        
+        .menu-toggle img {
+            width: 50px;
+            height: 50px;
+            transition: transform 0.3s;
+        }
+        
+        .menu-toggle.open img {
+            transform: rotate(45deg);
         }
         
         .sidebar {
@@ -321,7 +330,7 @@
 </head>
 <body>
     <button class="menu-toggle" id="menuToggle">
-        <i class="fas fa-bars"></i>
+        <img src="Donut.png" alt="Menu" />
     </button>
     
     <div class="sidebar" id="sidebar">
@@ -411,15 +420,7 @@
             e.stopPropagation();
             document.body.classList.toggle('menu-open');
             sidebar.classList.toggle('open');
-            
-            const icon = menuToggle.querySelector('i');
-            if (sidebar.classList.contains('open')) {
-                icon.classList.remove('fa-bars');
-                icon.classList.add('fa-times');
-            } else {
-                icon.classList.remove('fa-times');
-                icon.classList.add('fa-bars');
-            }
+            menuToggle.classList.toggle('open');
         });
 
         // Close sidebar when clicking outside
@@ -427,9 +428,7 @@
             if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuToggle) {
                 document.body.classList.remove('menu-open');
                 sidebar.classList.remove('open');
-                const icon = menuToggle.querySelector('i');
-                icon.classList.remove('fa-times');
-                icon.classList.add('fa-bars');
+                menuToggle.classList.remove('open');
             }
         });
 
