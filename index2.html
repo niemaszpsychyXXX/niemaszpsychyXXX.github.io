@@ -421,8 +421,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
-        // Firebase configuration
-        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM",
             authDomain: "nie-masz-psychy.firebaseapp.com",
@@ -463,9 +461,56 @@
         const resetFilters = document.getElementById('resetFilters');
         const activeFilters = document.getElementById('activeFilters');
 
-        // Toggle sidebar and other existing functions remain the same
-        // ...
+        // Initialize Firebase
+        function initFirebase() {
+            try {
+                app = firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                questionsRef = db.ref('questions');
+                usersRef = db.ref('users');
+                
+                const connectedRef = db.ref(".info/connected");
+                connectedRef.on("value", function(snap) {
+                    const statusDiv = document.getElementById('connectionStatus');
+                    if (snap.val() === true) {
+                        statusDiv.innerHTML = '<span class="status-indicator status-connected"></span> Połączono z bazą danych';
+                        statusDiv.className = "status-message success-message";
+                    } else {
+                        statusDiv.innerHTML = '<span class="status-indicator status-disconnected"></span> Brak połączenia z bazą danych';
+                        statusDiv.className = "status-message error-message";
+                    }
+                });
 
+                // Load users first
+                usersRef.once('value').then(function(snapshot) {
+                    const users = snapshot.val() || [];
+                    users.forEach(function(user) {
+                        usersData[user.id] = user.name;
+                    });
+                    
+                    // Then load questions
+                    questionsRef.on('value', function(snapshot) {
+                        const questionsData = snapshot.val() || {};
+                        processQuestionsFromFirebase(questionsData);
+                    }, function(error) {
+                        console.error("Firebase read failed:", error);
+                        document.getElementById('connectionStatus').innerHTML = 
+                            '<span class="status-indicator status-disconnected"></span> Błąd odczytu danych: ' + error.message;
+                        document.getElementById('connectionStatus').className = "status-message error-message";
+                    });
+                });
+                
+                return true;
+            } catch (error) {
+                console.error('Błąd inicjalizacji Firebase:', error);
+                document.getElementById('connectionStatus').innerHTML = 
+                    '<span class="status-indicator status-disconnected"></span> Błąd inicjalizacji Firebase: ' + error.message;
+                document.getElementById('connectionStatus').className = "status-message error-message";
+                return false;
+            }
+        }
+
+        // Process questions from Firebase
         function processQuestionsFromFirebase(questionsData) {
             allQuestions = [];
             const questionAuthors = new Set();
@@ -519,6 +564,103 @@
             applyFilters();
         }
 
+        // Populate dropdown with unique values
+        function populateDropdown(dropdownId, values) {
+            const dropdown = document.getElementById(dropdownId);
+            // Keep the first option (default "All" option)
+            while (dropdown.options.length > 1) {
+                dropdown.remove(1);
+            }
+            
+            values.sort().forEach(function(value) {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                dropdown.appendChild(option);
+            });
+        }
+
+        // Apply filters to questions
+        function applyFilters() {
+            const questionAuthor = questionAuthorFilter.value;
+            const answerAuthor = answerAuthorFilter.value;
+            const dateRange = dateFilter.value;
+            
+            let filteredQuestions = [...allQuestions];
+            
+            if (questionAuthor) {
+                filteredQuestions = filteredQuestions.filter(function(q) {
+                    return q.askedByName === questionAuthor;
+                });
+            }
+            
+            if (answerAuthor) {
+                filteredQuestions = filteredQuestions.filter(function(q) {
+                    return q.askedToName === answerAuthor;
+                });
+            }
+            
+            if (dateRange !== 'all') {
+                const now = new Date();
+                let cutoffDate;
+                
+                switch (dateRange) {
+                    case 'today':
+                        cutoffDate = new Date(now.setDate(now.getDate() - 1));
+                        break;
+                    case 'week':
+                        cutoffDate = new Date(now.setDate(now.getDate() - 7));
+                        break;
+                    case 'month':
+                        cutoffDate = new Date(now.setMonth(now.getMonth() - 1));
+                        break;
+                    case 'year':
+                        cutoffDate = new Date(now.setFullYear(now.getFullYear() - 1));
+                        break;
+                }
+                
+                filteredQuestions = filteredQuestions.filter(function(q) {
+                    if (!q.answer || !q.answer.timestamp) return false;
+                    const answerDate = new Date(q.answer.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3'));
+                    return answerDate >= cutoffDate;
+                });
+            }
+            
+            updateActiveFiltersText(questionAuthor, answerAuthor, dateRange);
+            displayQuestions(filteredQuestions);
+        }
+
+        // Update active filters text
+        function updateActiveFiltersText(questionAuthor, answerAuthor, dateRange) {
+            let filters = [];
+            
+            if (questionAuthor) filters.push('pytania: ' + questionAuthor);
+            if (answerAuthor) filters.push('odpowiedzi: ' + answerAuthor);
+            
+            if (dateRange !== 'all') {
+                const dateTexts = {
+                    'today': 'dzisiaj',
+                    'week': 'ostatni tydzień',
+                    'month': 'ostatni miesiąc',
+                    'year': 'ostatni rok'
+                };
+                filters.push('data: ' + dateTexts[dateRange]);
+            }
+            
+            activeFilters.textContent = filters.length > 0 
+                ? 'Filtry: ' + filters.join(', ') 
+                : 'Wyświetlane: wszystkie pytania';
+        }
+
+        // Reset all filters
+        function resetAllFilters() {
+            questionAuthorFilter.value = '';
+            answerAuthorFilter.value = '';
+            dateFilter.value = 'all';
+            applyFilters();
+        }
+
+        // Display questions
         function displayQuestions(questions) {
             const questionsList = document.getElementById('questionsList');
             
@@ -612,6 +754,7 @@
             });
         }
         
+        // Add reaction
         function addReaction(questionId, reactionType, firebasePath) {
             // Find the question in our local data
             const question = allQuestions.find(q => 
@@ -655,6 +798,7 @@
             }
         }
         
+        // Remove reaction
         function removeReaction(questionId, reactionType, firebasePath) {
             // Find the question in our local data
             const question = allQuestions.find(q => 
@@ -702,10 +846,31 @@
             }
         }
 
+        // Event listeners
+        menuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.body.classList.toggle('menu-open');
+            sidebar.classList.toggle('open');
+            menuToggle.classList.toggle('open');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuToggle) {
+                document.body.classList.remove('menu-open');
+                sidebar.classList.remove('open');
+                menuToggle.classList.remove('open');
+            }
+        });
+
+        questionAuthorFilter.addEventListener('change', applyFilters);
+        answerAuthorFilter.addEventListener('change', applyFilters);
+        dateFilter.addEventListener('change', applyFilters);
+        resetFilters.addEventListener('click', resetAllFilters);
+
+        // Initialize the app
         document.addEventListener('DOMContentLoaded', function() {
             initFirebase();
         });
-    </script>
     </script>
 </body>
 </html>
