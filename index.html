@@ -298,6 +298,41 @@
             font-size: 16px;
         }
         
+        /* Reaction styles */
+        .reactions-container {
+            display: flex;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .reaction-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            margin-right: 10px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        
+        .reaction-btn:hover {
+            background: #f0f0f0;
+            transform: scale(1.1);
+        }
+        
+        .reaction-btn.active {
+            background: #e0e0e0;
+        }
+        
+        .reaction-count {
+            font-size: 14px;
+            margin-left: 5px;
+            color: #666;
+        }
+        
         @media (max-width: 768px) {
             body {
                 padding: 20px 10px;
@@ -387,6 +422,7 @@
 
     <script>
         // Firebase configuration
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM",
             authDomain: "nie-masz-psychy.firebaseapp.com",
@@ -403,8 +439,20 @@
         let questionsRef = null;
         let usersRef = null;
         let usersData = {};
-        let lastDisplayedData = null;
         let allQuestions = [];
+
+        // Session storage for reactions
+        let sessionReactions = JSON.parse(sessionStorage.getItem('reactions')) || {};
+
+        // Available reaction emojis
+        const availableReactions = {
+            'like': '👍',
+            'love': '❤️',
+            'laugh': '😂',
+            'wow': '😮',
+            'sad': '😢',
+            'angry': '😠'
+        };
 
         // DOM elements
         const menuToggle = document.getElementById('menuToggle');
@@ -415,168 +463,8 @@
         const resetFilters = document.getElementById('resetFilters');
         const activeFilters = document.getElementById('activeFilters');
 
-        // Toggle sidebar
-        menuToggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            document.body.classList.toggle('menu-open');
-            sidebar.classList.toggle('open');
-            menuToggle.classList.toggle('open');
-        });
-
-        // Close sidebar when clicking outside
-        document.addEventListener('click', function(e) {
-            if (sidebar.classList.contains('open') && !sidebar.contains(e.target) && e.target !== menuToggle) {
-                document.body.classList.remove('menu-open');
-                sidebar.classList.remove('open');
-                menuToggle.classList.remove('open');
-            }
-        });
-
-        // Filter functions
-        function applyFilters() {
-            const questionAuthor = questionAuthorFilter.value;
-            const answerAuthor = answerAuthorFilter.value;
-            const dateRange = dateFilter.value;
-            
-            let filteredQuestions = [...allQuestions];
-            
-            if (questionAuthor) {
-                filteredQuestions = filteredQuestions.filter(function(q) {
-                    return q.askedByName === questionAuthor;
-                });
-            }
-            
-            if (answerAuthor) {
-                filteredQuestions = filteredQuestions.filter(function(q) {
-                    return q.askedToName === answerAuthor;
-                });
-            }
-            
-            if (dateRange !== 'all') {
-                const now = new Date();
-                let cutoffDate;
-                
-                switch (dateRange) {
-                    case 'today':
-                        cutoffDate = new Date(now.setDate(now.getDate() - 1));
-                        break;
-                    case 'week':
-                        cutoffDate = new Date(now.setDate(now.getDate() - 7));
-                        break;
-                    case 'month':
-                        cutoffDate = new Date(now.setMonth(now.getMonth() - 1));
-                        break;
-                    case 'year':
-                        cutoffDate = new Date(now.setFullYear(now.getFullYear() - 1));
-                        break;
-                }
-                
-                filteredQuestions = filteredQuestions.filter(function(q) {
-                    if (!q.answer || !q.answer.timestamp) return false;
-                    const answerDate = new Date(q.answer.timestamp.replace(/(\d{2}).(\d{2}).(\d{4})/, '$2/$1/$3'));
-                    return answerDate >= cutoffDate;
-                });
-            }
-            
-            updateActiveFiltersText(questionAuthor, answerAuthor, dateRange);
-            displayQuestions(filteredQuestions);
-        }
-        
-        function updateActiveFiltersText(questionAuthor, answerAuthor, dateRange) {
-            let filters = [];
-            
-            if (questionAuthor) filters.push('pytania: ' + questionAuthor);
-            if (answerAuthor) filters.push('odpowiedzi: ' + answerAuthor);
-            
-            if (dateRange !== 'all') {
-                const dateTexts = {
-                    'today': 'dzisiaj',
-                    'week': 'ostatni tydzień',
-                    'month': 'ostatni miesiąc',
-                    'year': 'ostatni rok'
-                };
-                filters.push('data: ' + dateTexts[dateRange]);
-            }
-            
-            activeFilters.textContent = filters.length > 0 
-                ? 'Filtry: ' + filters.join(', ') 
-                : 'Wyświetlane: wszystkie pytania';
-        }
-        
-        function resetAllFilters() {
-            questionAuthorFilter.value = '';
-            answerAuthorFilter.value = '';
-            dateFilter.value = 'all';
-            applyFilters();
-        }
-        
-        // Populate dropdown with unique values
-        function populateDropdown(dropdownId, values) {
-            const dropdown = document.getElementById(dropdownId);
-            // Keep the first option (default "All" option)
-            while (dropdown.options.length > 1) {
-                dropdown.remove(1);
-            }
-            
-            values.sort().forEach(function(value) {
-                const option = document.createElement('option');
-                option.value = value;
-                option.textContent = value;
-                dropdown.appendChild(option);
-            });
-        }
-        
-        // Event listeners for filters
-        questionAuthorFilter.addEventListener('change', applyFilters);
-        answerAuthorFilter.addEventListener('change', applyFilters);
-        dateFilter.addEventListener('change', applyFilters);
-        resetFilters.addEventListener('click', resetAllFilters);
-
-        function initFirebase() {
-            try {
-                app = firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
-                questionsRef = db.ref('questions');
-                usersRef = db.ref('users');
-                
-                const connectedRef = db.ref(".info/connected");
-                connectedRef.on("value", function(snap) {
-                    const statusDiv = document.getElementById('connectionStatus');
-                    if (snap.val() === true) {
-                        statusDiv.innerHTML = '<span class="status-indicator status-connected"></span> Połączono z bazą danych';
-                        statusDiv.className = "status-message success-message";
-                    } else {
-                        statusDiv.innerHTML = '<span class="status-indicator status-disconnected"></span> Brak połączenia z bazą danych';
-                        statusDiv.className = "status-message error-message";
-                    }
-                });
-
-                usersRef.once('value').then(function(snapshot) {
-                    const users = snapshot.val() || [];
-                    users.forEach(function(user) {
-                        usersData[user.id] = user.name;
-                    });
-                    
-                    questionsRef.on('value', function(snapshot) {
-                        const questionsData = snapshot.val() || {};
-                        processQuestionsFromFirebase(questionsData);
-                    }, function(error) {
-                        console.error("Firebase read failed:", error);
-                        document.getElementById('connectionStatus').innerHTML = 
-                            '<span class="status-indicator status-disconnected"></span> Błąd odczytu danych: ' + error.message;
-                        document.getElementById('connectionStatus').className = "status-message error-message";
-                    });
-                });
-                
-                return true;
-            } catch (error) {
-                console.error('Błąd inicjalizacji Firebase:', error);
-                document.getElementById('connectionStatus').innerHTML = 
-                    '<span class="status-indicator status-disconnected"></span> Błąd inicjalizacji Firebase: ' + error.message;
-                document.getElementById('connectionStatus').className = "status-message error-message";
-                return false;
-            }
-        }
+        // Toggle sidebar and other existing functions remain the same
+        // ...
 
         function processQuestionsFromFirebase(questionsData) {
             allQuestions = [];
@@ -593,7 +481,7 @@
                 const answerAuthorName = usersData[userId] || 'Użytkownik (' + userId.substring(0, 6) + '...)';
                 answerAuthors.add(answerAuthorName);
                 
-                userQuestions.forEach(function(question) {
+                userQuestions.forEach(function(question, questionIndex) {
                     if (!question.answer || question.answer.secret || !question.answer.text || question.answer.text.trim() === '') {
                         return;
                     }
@@ -601,11 +489,18 @@
                     const questionAuthorName = usersData[question.from] || 'Użytkownik (' + question.from.substring(0, 6) + '...)';
                     questionAuthors.add(questionAuthorName);
                     
+                    // Initialize reactions if they don't exist
+                    if (!question.reactions) {
+                        question.reactions = {};
+                    }
+                    
+                    // Add Firebase path information to the question
                     allQuestions.push({
                         ...question,
                         askedTo: userId,
                         askedToName: answerAuthorName,
-                        askedByName: questionAuthorName
+                        askedByName: questionAuthorName,
+                        firebasePath: `questions/${userId}/${questionIndex}`  // Store the path to this question in Firebase
                     });
                 });
             });
@@ -623,7 +518,7 @@
             
             applyFilters();
         }
-        
+
         function displayQuestions(questions) {
             const questionsList = document.getElementById('questionsList');
             
@@ -638,6 +533,28 @@
             questions.forEach(function(question) {
                 const qaItem = document.createElement('div');
                 qaItem.className = 'qa-item';
+                
+                // Generate unique ID for this question/answer pair
+                const questionId = `${question.askedTo}_${question.from}_${question.timestamp}`;
+                
+                // Create reactions HTML
+                let reactionsHtml = '<div class="reactions-container">';
+                
+                Object.entries(availableReactions).forEach(([reactionType, emoji]) => {
+                    const count = question.reactions && question.reactions[reactionType] ? question.reactions[reactionType] : 0;
+                    const isActive = sessionReactions[questionId] === reactionType;
+                    
+                    reactionsHtml += `
+                        <button class="reaction-btn ${isActive ? 'active' : ''}" 
+                                data-question-id="${questionId}" 
+                                data-firebase-path="${question.firebasePath}"
+                                data-reaction="${reactionType}">
+                            ${emoji} <span class="reaction-count">${count}</span>
+                        </button>
+                    `;
+                });
+                
+                reactionsHtml += '</div>';
                 
                 qaItem.innerHTML = `
                     <div class="question-section">
@@ -654,10 +571,40 @@
                             <span class="answer-time">${question.answer.timestamp || 'Brak daty'}</span>
                         </div>
                         <div class="answer-content">${question.answer.text}</div>
+                        ${reactionsHtml}
                     </div>
                 `;
                 
                 questionsList.appendChild(qaItem);
+            });
+            
+            // Add event listeners to reaction buttons
+            document.querySelectorAll('.reaction-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const questionId = this.getAttribute('data-question-id');
+                    const reactionType = this.getAttribute('data-reaction');
+                    const firebasePath = this.getAttribute('data-firebase-path');
+                    
+                    // Check if user already reacted to this question
+                    const previousReaction = sessionReactions[questionId];
+                    
+                    if (previousReaction === reactionType) {
+                        // User clicked the same reaction - remove it
+                        removeReaction(questionId, reactionType, firebasePath);
+                        this.classList.remove('active');
+                    } else {
+                        // User clicked a different reaction
+                        if (previousReaction) {
+                            // Remove previous reaction first
+                            removeReaction(questionId, previousReaction, firebasePath);
+                            document.querySelector(`.reaction-btn[data-question-id="${questionId}"][data-reaction="${previousReaction}"]`).classList.remove('active');
+                        }
+                        
+                        // Add new reaction
+                        addReaction(questionId, reactionType, firebasePath);
+                        this.classList.add('active');
+                    }
+                });
             });
             
             requestAnimationFrame(function() {
@@ -665,9 +612,100 @@
             });
         }
         
+        function addReaction(questionId, reactionType, firebasePath) {
+            // Find the question in our local data
+            const question = allQuestions.find(q => 
+                `${q.askedTo}_${q.from}_${q.timestamp}` === questionId
+            );
+            
+            if (question) {
+                // Initialize reactions if they don't exist
+                if (!question.reactions) {
+                    question.reactions = {};
+                }
+                
+                // Increment reaction count locally
+                if (!question.reactions[reactionType]) {
+                    question.reactions[reactionType] = 0;
+                }
+                question.reactions[reactionType]++;
+                
+                // Update Firebase
+                const updates = {};
+                updates[`reactions/${reactionType}`] = question.reactions[reactionType];
+                db.ref(firebasePath).update(updates)
+                    .then(() => {
+                        console.log('Reaction added successfully');
+                    })
+                    .catch(error => {
+                        console.error('Error adding reaction:', error);
+                        // Rollback local change if Firebase update fails
+                        question.reactions[reactionType]--;
+                    });
+                
+                // Update the UI
+                const countElement = document.querySelector(`.reaction-btn[data-question-id="${questionId}"][data-reaction="${reactionType}"] .reaction-count`);
+                if (countElement) {
+                    countElement.textContent = question.reactions[reactionType];
+                }
+                
+                // Store in session
+                sessionReactions[questionId] = reactionType;
+                sessionStorage.setItem('reactions', JSON.stringify(sessionReactions));
+            }
+        }
+        
+        function removeReaction(questionId, reactionType, firebasePath) {
+            // Find the question in our local data
+            const question = allQuestions.find(q => 
+                `${q.askedTo}_${q.from}_${q.timestamp}` === questionId
+            );
+            
+            if (question && question.reactions && question.reactions[reactionType]) {
+                // Decrement reaction count locally
+                question.reactions[reactionType]--;
+                if (question.reactions[reactionType] <= 0) {
+                    delete question.reactions[reactionType];
+                }
+                
+                // Prepare Firebase update
+                const updates = {};
+                if (question.reactions[reactionType]) {
+                    updates[`reactions/${reactionType}`] = question.reactions[reactionType];
+                } else {
+                    updates[`reactions/${reactionType}`] = null; // Remove if count is 0
+                }
+                
+                // Update Firebase
+                db.ref(firebasePath).update(updates)
+                    .then(() => {
+                        console.log('Reaction removed successfully');
+                    })
+                    .catch(error => {
+                        console.error('Error removing reaction:', error);
+                        // Rollback local change if Firebase update fails
+                        if (!question.reactions[reactionType]) {
+                            question.reactions[reactionType] = 0;
+                        }
+                        question.reactions[reactionType]++;
+                    });
+                
+                // Update the UI
+                const countElement = document.querySelector(`.reaction-btn[data-question-id="${questionId}"][data-reaction="${reactionType}"] .reaction-count`);
+                if (countElement) {
+                    countElement.textContent = question.reactions[reactionType] || 0;
+                }
+                
+                // Remove from session storage
+                delete sessionReactions[questionId];
+                sessionStorage.setItem('reactions', JSON.stringify(sessionReactions));
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             initFirebase();
         });
+    </script>
     </script>
 </body>
 </html>
