@@ -1,4 +1,428 @@
-// Firebase configuration
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pytania i Odpowiedzi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #fccbe2;
+            min-height: 100vh;
+            padding: 40px 20px;
+            transition: margin-left 0.3s;
+        }
+        
+        body.menu-open {
+            margin-left: 250px;
+            overflow: hidden;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #b6196e;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .menu-toggle {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #b6196e;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            z-index: 1002;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        
+        .menu-toggle:hover {
+            background: #9a1460;
+            transform: scale(1.05);
+        }
+        
+        .menu-toggle img {
+            width: 50px;
+            height: 50px;
+            transition: transform 0.3s;
+        }
+        
+        .menu-toggle.open img {
+            transform: rotate(45deg);
+        }
+        
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -250px;
+            width: 250px;
+            height: 100vh;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            z-index: 1001;
+            transition: left 0.3s;
+            padding: 70px 20px 20px;
+            overflow-y: auto;
+        }
+        
+        .sidebar.open {
+            left: 0;
+        }
+        
+        .sidebar h2 {
+            color: #b6196e;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .filter-group {
+            margin-bottom: 25px;
+        }
+        
+        .filter-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        .filter-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            background-color: white;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 15px;
+        }
+        
+        .reset-filters {
+            background: #b6196e;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            width: 100%;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        
+        .reset-filters:hover {
+            background: #9a1460;
+        }
+        
+        .qa-item {
+            background: #fafafa;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .qa-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+        
+        .question-section {
+            margin-bottom: 25px;
+        }
+        
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #888;
+        }
+        
+        .question-author {
+            font-weight: 600;
+            color: #b1b1b1;
+        }
+        
+        .question-time {
+            color: #aaa;
+        }
+        
+        .question-content {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #b1b1b1;
+            margin-bottom: 20px;
+            white-space: pre-line;
+            border-left: 4px solid #ddd;
+            padding-left: 15px;
+            min-height: 40px;
+        }
+        
+        .answer-section {
+            border-top: 1px solid #e0e0e0;
+            padding-top: 20px;
+        }
+        
+        .answer-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .answer-author {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .answer-time {
+            color: #aaa;
+        }
+        
+        .answer-content {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-line;
+            border-left: 4px solid #090909;
+            padding-left: 15px;
+            min-height: 40px;
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.9);
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .success-message {
+            color: #2ed573;
+            border: 1px solid rgba(46, 213, 115, 0.3);
+        }
+        
+        .error-message {
+            background: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+            border: 1px solid rgba(255, 71, 87, 0.3);
+        }
+        
+        .status-loading {
+            background: rgba(255, 193, 7, 0.1);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected {
+            background: #28a745;
+        }
+
+        .status-disconnected {
+            background: #dc3545;
+        }
+
+        .status-loading {
+            background: #ffc107;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .filters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .active-filters {
+            font-size: 14px;
+            color: #b6196e;
+            font-weight: 500;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 16px;
+        }
+        
+        /* Reaction styles */
+        .reactions-container {
+            display: flex;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .reaction-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            margin-right: 10px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        
+        .reaction-btn:hover {
+            background: #f0f0f0;
+            transform: scale(1.1);
+        }
+        
+        .reaction-btn.active {
+            background: #e0e0e0;
+        }
+        
+        .reaction-count {
+            font-size: 14px;
+            margin-left: 5px;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 10px;
+            }
+            
+            body.menu-open {
+                margin-left: 0;
+            }
+            
+            .sidebar {
+                width: 100%;
+                left: -100%;
+            }
+            
+            .sidebar.open {
+                left: 0;
+            }
+            
+            h1 {
+                font-size: 2em;
+                margin-bottom: 30px;
+            }
+            
+            .qa-item {
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="menu-toggle" id="menuToggle">
+        <img src="Donut.png" alt="Menu" />
+    </button>
+    
+    <div class="sidebar" id="sidebar">
+        <h2>Filtry</h2>
+        
+        <div class="filter-group">
+            <label for="questionAuthor">Autor pytania:</label>
+            <select id="questionAuthor">
+                <option value="">Wszyscy autorzy</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="answerAuthor">Autor odpowiedzi:</label>
+            <select id="answerAuthor">
+                <option value="">Wszyscy autorzy</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="dateFilter">Data:</label>
+            <select id="dateFilter">
+                <option value="all">Wszystkie</option>
+                <option value="today">Dzisiaj</option>
+                <option value="week">Ostatni tydzień</option>
+                <option value="month">Ostatni miesiąc</option>
+                <option value="year">Ostatni rok</option>
+            </select>
+        </div>
+        
+        <button class="reset-filters" id="resetFilters">Wyczyść filtry</button>
+    </div>
+
+    <div class="container">
+        <h1><i class="fas fa-comments"></i> Pytania i odpowiedzi</h1>
+        
+        <div class="filters-header">
+            <div class="active-filters" id="activeFilters">Wyświetlane: wszystkie pytania</div>
+        </div>
+        
+        <div class="section">
+            <div id="connectionStatus" class="status-message status-loading">
+                <span class="status-indicator status-loading"></span>
+                Łączenie z bazą danych...
+            </div>
+            <div id="questionsList">
+                <p style="text-align: center; color: #666;">Ładowanie pytań...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script>
+        // Firebase configuration
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyASxWUgC3snryxTZXEVELfL_ftlU51mjQM",
             authDomain: "nie-masz-psychy.firebaseapp.com",
@@ -282,3 +706,6 @@
             initFirebase();
         });
     </script>
+    </script>
+</body>
+</html>
