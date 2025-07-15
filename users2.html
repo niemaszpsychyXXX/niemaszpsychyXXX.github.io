@@ -333,16 +333,6 @@
         .hidden {
             display: none;
         }
-
-        .anon-info {
-            font-size: 12px;
-            color: #888;
-            margin-top: 5px;
-            padding: 5px;
-            border-radius: 5px;
-            background-color: #f0f0f0;
-            display: inline-block;
-        }
         
         /* Mobile responsiveness */
         @media (max-width: 768px) {
@@ -382,7 +372,6 @@
                 <div class="input-group">
                     <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
                 </div>
-                <div id="questionModeInfo" class="anon-info"></div>
                 <button onclick="sendQuestion()">Wyślij Pytanie</button>
                 <button onclick="changeRecipient()" style="margin-top: 10px; background: var(--secondary-color);">Zmień odbiorcę losowo</button>
                 <div id="questionMessage"></div>
@@ -526,18 +515,48 @@
                 app = firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
                 
-                // Listen for database changes
-                const dbRef = firebase.database().ref('/');
-                dbRef.on('value', (snapshot) => {
-                    const data = snapshot.val() || {};
-                    users = data.users || [];
-                    assignments = data.assignments || {};
-                    questions = data.questions || {};
-                    settings = data.settings || { mode: 'open_both' }; // Load settings
-                    
-                    updateUI();
-                    updateModeInfo();
-                });
+                // Get current user ID from URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                let userId = urlParams.get('user');
+                
+                // If no user ID, try to get from code
+                if (!userId) {
+                    const userCode = urlParams.get('code');
+                    if (userCode) {
+                        // First load users to find user by code
+                        const usersSnapshot = await db.ref('/users').once('value');
+                        const usersData = usersSnapshot.val() || [];
+                        const user = usersData.find(u => u.code === userCode);
+                        if (user) {
+                            userId = user.id;
+                        }
+                    }
+                }
+                
+                if (!userId) {
+                    showMessage('error', 'Nie można zidentyfikować użytkownika');
+                    document.body.classList.add('theme-loaded');
+                    return;
+                }
+                
+                currentUserId = userId;
+                
+                // Load essential data first (users, assignments, settings)
+                const [usersSnapshot, assignmentsSnapshot, settingsSnapshot] = await Promise.all([
+                    db.ref('/users').once('value'),
+                    db.ref('/assignments').once('value'),
+                    db.ref('/settings').once('value')
+                ]);
+                
+                users = usersSnapshot.val() || [];
+                assignments = assignmentsSnapshot.val() || {};
+                settings = settingsSnapshot.val() || { mode: 'open_both' };
+                
+                // Set up targeted listeners for user-specific data
+                setupUserSpecificListeners(userId);
+                
+                // Initial UI update with basic data
+                updateUI();
                 
             } catch (error) {
                 console.error('Błąd inicjalizacji Firebase:', error);
@@ -546,29 +565,78 @@
             }
         }
 
-        // Update mode information display
-        function updateModeInfo() {
-            const questionModeInfo = document.getElementById('questionModeInfo');
-            if (!questionModeInfo) return;
-            
-            const currentMode = settings.mode || 'open_both';
-            
-            switch(currentMode) {
-                case 'anon_question':
-                    questionModeInfo.textContent = '⚠️ Twoje pytanie będzie anonimowe';
-                    break;
-                case 'anon_both':
-                    questionModeInfo.textContent = '⚠️ Twoje pytanie i odpowiedź będą anonimowe';
-                    break;
-                case 'open_question':
-                    questionModeInfo.textContent = 'Twoje pytanie będzie widoczne z Twoim imieniem';
-                    break;
-                default: // open_both
-                    questionModeInfo.textContent = 'Twoje pytanie i odpowiedź będą widoczne z imionami';
-                    break;
+        function setupUserSpecificListeners(userId) {
+    // Listen for questions received by current user
+    db.ref(`/questions/${userId}`).on('value', (snapshot) => {
+        const userQuestions = snapshot.val() || [];
+        questions[userId] = userQuestions;
+        updateReceivedQuestions();
+    });
+    
+    // Listen for questions asked by current user (to show answers)
+    db.ref('/questions').orderByChild('from').equalTo(userId).on('value', (snapshot) => {
+        const askedQuestions = snapshot.val() || {};
+        
+        // Update questions object with asked questions
+        Object.keys(askedQuestions).forEach(targetUserId => {
+            const targetQuestions = askedQuestions[targetUserId];
+            if (targetQuestions) {
+                // Only update questions that are from current user
+                const userAskedQuestions = targetQuestions.filter(q => q.from === userId);
+                if (!questions[targetUserId]) {
+                    questions[targetUserId] = [];
+                }
+                // Replace only the questions asked by current user
+                questions[targetUserId] = questions[targetUserId].filter(q => q.from !== userId);
+                questions[targetUserId].push(...userAskedQuestions);
             }
+        });
+        
+        updateAskedQuestions();
+    });
+    
+    // Listen for changes in assignments (lightweight)
+    db.ref('/assignments').on('value', (snapshot) => {
+        assignments = snapshot.val() || {};
+        updateAssignmentInfo();
+    });
+    
+    // Listen for settings changes (very lightweight)
+    db.ref('/settings').on('value', (snapshot) => {
+        settings = snapshot.val() || { mode: 'open_both' };
+    });
+    
+    // Listen for user data changes (for theme updates, etc.)
+    db.ref('/users').on('value', (snapshot) => {
+        const newUsers = snapshot.val() || [];
+        const oldUserData = users.find(u => u.id === userId);
+        const newUserData = newUsers.find(u => u.id === userId);
+        
+        users = newUsers;
+        
+        // Only update theme if user's theme changed
+        if (oldUserData && newUserData && oldUserData.theme !== newUserData.theme) {
+            applyTheme(newUserData);
         }
-
+        
+        // Update assignment info in case user names changed
+        updateAssignmentInfo();
+    });
+}
+        // Helper function to update just assignment info
+function updateAssignmentInfo() {
+    if (!currentUserId) return;
+    
+    const assignedUser = users.find(u => u.id === assignments[currentUserId]);
+    const assignmentInfoElement = document.getElementById('assignmentInfo');
+    
+    if (assignedUser && assignmentInfoElement) {
+        assignmentInfoElement.textContent = `Wyślij pytanie do ${assignedUser.name} (${assignedUser.threadsNick}):`;
+    } else if (assignmentInfoElement) {
+        assignmentInfoElement.textContent = 'Brak dostępnego przydziału';
+    }
+}
+        
         // Display message
         function showMessage(type, text) {
             const messageDiv = document.createElement('div');
@@ -750,18 +818,15 @@
                         <div class="answer-section">
                             <div class="answer-item">
                                 <div class="answer-header">
-                                    <span class="answer-author">${question.answer.mode === 'anon_both' || settings.mode === 'anon_both' ? 'Anonim' : 'Ty'}</span>
+                                    <span class="answer-author">Ty</span>
                                     <span class="answer-time">${question.answer.timestamp}</span>
                                 </div>
                                 <div class="answer-content">${question.answer.text}</div>
                                 ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Sekret)</div>' : ''}
-                                ${question.answer.mode === 'anon_both' || settings.mode === 'anon_both' ? 
-                                  '<div class="anon-info">Odpowiedź anonimowa</div>' : ''}
                             </div>
                         </div>
                     `;
                 } else {
-                    const isAnonAnswer = settings.mode === 'anon_both';
                     answerSection = `
                         <div class="answer-form">
                             <textarea class="answer-textarea" id="answer-${displayIndex}" placeholder="Napisz odpowiedź..."></textarea>
@@ -769,22 +834,17 @@
                                 <input type="checkbox" id="secret-${displayIndex}">
                                 <label for="secret-${displayIndex}">👀 SEKRET 👀</label>
                             </div>
-                            ${isAnonAnswer ? '<div class="anon-info">Twoja odpowiedź będzie anonimowa</div>' : ''}
                             <button class="answer-btn" onclick="sendAnswer(${question.originalIndex})">Wyślij odpowiedź</button>
                         </div>
                     `;
                 }
                 
-                const isAnonQuestion = question.mode === 'anon_question' || question.mode === 'anon_both' || 
-                                      settings.mode === 'anon_question' || settings.mode === 'anon_both';
-                
                 questionItem.innerHTML = `
                     <div class="question-header">
-                        <span class="question-author">${isAnonQuestion ? 'Anonim' : (fromUser ? fromUser.name : 'Nieznany użytkownik')}</span>
+                        <span class="question-author">${fromUser ? fromUser.name : 'Nieznany użytkownik'}</span>
                         <span class="question-time">${question.timestamp}</span>
                     </div>
                     <div class="question-content">${question.text}</div>
-                    ${isAnonQuestion ? '<div class="anon-info">Pytanie anonimowe</div>' : ''}
                     ${answerSection}
                 `;
                 receivedQuestionsDiv.prepend(questionItem);
@@ -900,14 +960,11 @@
                             <div class="answer-section">
                                 <div class="answer-item">
                                     <div class="answer-header">
-                                        <span class="answer-author">${question.answer.mode === 'anon_both' || settings.mode === 'anon_both' ? 
-                                          'Anonim' : (question.targetUser ? question.targetUser.name : 'Nieznany użytkownik')}</span>
+                                        <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
                                         <span class="answer-time">${question.answer.timestamp}</span>
                                     </div>
                                     <div class="answer-content">${question.answer.text}</div>
                                     <div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>
-                                    ${question.answer.mode === 'anon_both' || settings.mode === 'anon_both' ? 
-                                      '<div class="anon-info">Odpowiedź anonimowa</div>' : ''}
                                 </div>
                             </div>
                         `;
@@ -916,13 +973,10 @@
                             <div class="answer-section">
                                 <div class="answer-item">
                                     <div class="answer-header">
-                                        <span class="answer-author">${question.answer.mode === 'anon_both' || settings.mode === 'anon_both' ? 
-                                          'Anonim' : (question.targetUser ? question.targetUser.name : 'Nieznany użytkownik')}</span>
+                                        <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
                                         <span class="answer-time">${question.answer.timestamp}</span>
                                     </div>
                                     <div class="answer-content">${question.answer.text}</div>
-                                    ${question.answer.mode === 'anon_both' || settings.mode === 'anon_both' ? 
-                                      '<div class="anon-info">Odpowiedź anonimowa</div>' : ''}
                                 </div>
                             </div>
                         `;
@@ -931,22 +985,63 @@
                     answerSection = '<div class="answer-section" style="color: #888;">(Brak odpowiedzi)</div>';
                 }
                 
-                const isAnonQuestion = question.mode === 'anon_question' || question.mode === 'anon_both' || 
-                                      settings.mode === 'anon_question' || settings.mode === 'anon_both';
-                
                 questionItem.innerHTML = `
                     <div class="question-header">
                         <span class="question-author">Ty</span>
                         <span class="question-time">${question.timestamp}</span>
                     </div>
                     <div class="question-content">${question.text}</div>
-                    ${isAnonQuestion ? '<div class="anon-info">Pytanie anonimowe</div>' : ''}
                     ${answerSection}
                 `;
                 askedQuestionsDiv.appendChild(questionItem);
             });
         }
 
+        async function saveQuestionToFirebase(targetUserId, questionData) {
+    if (!db) {
+        alert('Najpierw połącz się z Firebase');
+        return;
+    }
+
+    try {
+        // Push new question to specific user's questions
+        await db.ref(`/questions/${targetUserId}`).push(questionData);
+    } catch (error) {
+        console.error('Błąd zapisu pytania do Firebase:', error);
+        showMessage('error', 'Błąd zapisu: ' + error.message);
+    }
+}
+
+// Optimized save function for answers
+async function saveAnswerToFirebase(questionPath, answerData) {
+    if (!db) {
+        alert('Najpierw połącz się z Firebase');
+        return;
+    }
+
+    try {
+        // Update specific question with answer
+        await db.ref(questionPath).update({ answer: answerData });
+    } catch (error) {
+        console.error('Błąd zapisu odpowiedzi do Firebase:', error);
+        showMessage('error', 'Błąd zapisu: ' + error.message);
+    }
+}
+
+        async function saveAssignmentToFirebase(userId, assignedUserId) {
+    if (!db) {
+        alert('Najpierw połącz się z Firebase');
+        return;
+    }
+
+    try {
+        await db.ref(`/assignments/${userId}`).set(assignedUserId);
+    } catch (error) {
+        console.error('Błąd zapisu przydziału do Firebase:', error);
+        showMessage('error', 'Błąd zapisu: ' + error.message);
+    }
+}
+        
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
             preloadTheme();
