@@ -298,6 +298,41 @@
             font-size: 16px;
         }
         
+        /* Reaction styles */
+        .reactions-container {
+            display: flex;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .reaction-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            margin-right: 10px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        
+        .reaction-btn:hover {
+            background: #f0f0f0;
+            transform: scale(1.1);
+        }
+        
+        .reaction-btn.active {
+            background: #e0e0e0;
+        }
+        
+        .reaction-count {
+            font-size: 14px;
+            margin-left: 5px;
+            color: #666;
+        }
+        
         @media (max-width: 768px) {
             body {
                 padding: 20px 10px;
@@ -405,6 +440,19 @@
         let usersData = {};
         let lastDisplayedData = null;
         let allQuestions = [];
+
+        // Session storage for reactions
+        let sessionReactions = JSON.parse(sessionStorage.getItem('reactions')) || {};
+
+        // Available reaction emojis
+        const availableReactions = {
+            'like': '👍',
+            'love': '❤️',
+            'laugh': '😂',
+            'wow': '😮',
+            'sad': '😢',
+            'angry': '😠'
+        };
 
         // DOM elements
         const menuToggle = document.getElementById('menuToggle');
@@ -601,6 +649,11 @@
                     const questionAuthorName = usersData[question.from] || 'Użytkownik (' + question.from.substring(0, 6) + '...)';
                     questionAuthors.add(questionAuthorName);
                     
+                    // Initialize reactions if they don't exist
+                    if (!question.reactions) {
+                        question.reactions = {};
+                    }
+                    
                     allQuestions.push({
                         ...question,
                         askedTo: userId,
@@ -635,9 +688,30 @@
             const scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
             questionsList.innerHTML = '';
             
-            questions.forEach(function(question) {
+            questions.forEach(function(question, index) {
                 const qaItem = document.createElement('div');
                 qaItem.className = 'qa-item';
+                
+                // Generate unique ID for this question/answer pair
+                const questionId = `${question.askedTo}_${question.from}_${question.timestamp}`;
+                
+                // Create reactions HTML
+                let reactionsHtml = '<div class="reactions-container">';
+                
+                Object.entries(availableReactions).forEach(([reactionType, emoji]) => {
+                    const count = question.reactions && question.reactions[reactionType] ? question.reactions[reactionType] : 0;
+                    const isActive = sessionReactions[questionId] === reactionType;
+                    
+                    reactionsHtml += `
+                        <button class="reaction-btn ${isActive ? 'active' : ''}" 
+                                data-question-id="${questionId}" 
+                                data-reaction="${reactionType}">
+                            ${emoji} <span class="reaction-count">${count}</span>
+                        </button>
+                    `;
+                });
+                
+                reactionsHtml += '</div>';
                 
                 qaItem.innerHTML = `
                     <div class="question-section">
@@ -654,15 +728,137 @@
                             <span class="answer-time">${question.answer.timestamp || 'Brak daty'}</span>
                         </div>
                         <div class="answer-content">${question.answer.text}</div>
+                        ${reactionsHtml}
                     </div>
                 `;
                 
                 questionsList.appendChild(qaItem);
             });
             
+            // Add event listeners to reaction buttons
+            document.querySelectorAll('.reaction-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const questionId = this.getAttribute('data-question-id');
+                    const reactionType = this.getAttribute('data-reaction');
+                    
+                    // Check if user already reacted to this question
+                    const previousReaction = sessionReactions[questionId];
+                    
+                    if (previousReaction === reactionType) {
+                        // User clicked the same reaction - remove it
+                        removeReaction(questionId, reactionType);
+                        this.classList.remove('active');
+                        sessionStorage.setItem('reactions', JSON.stringify(sessionReactions));
+                    } else {
+                        // User clicked a different reaction
+                        if (previousReaction) {
+                            // Remove previous reaction first
+                            removeReaction(questionId, previousReaction);
+                            document.querySelector(`.reaction-btn[data-question-id="${questionId}"][data-reaction="${previousReaction}"]`).classList.remove('active');
+                        }
+                        
+                        // Add new reaction
+                        addReaction(questionId, reactionType);
+                        this.classList.add('active');
+                        
+                        // Store in session
+                        sessionReactions[questionId] = reactionType;
+                        sessionStorage.setItem('reactions', JSON.stringify(sessionReactions));
+                    }
+                });
+            });
+            
             requestAnimationFrame(function() {
                 window.scrollTo(0, scrollPosition);
             });
+        }
+        
+        function addReaction(questionId, reactionType) {
+            const [userId, fromId, timestamp] = questionId.split('_');
+            
+            // Find the question in our local data
+            const question = allQuestions.find(q => 
+                q.askedTo === userId && 
+                q.from === fromId && 
+                q.timestamp === timestamp
+            );
+            
+            if (question) {
+                // Initialize reactions if they don't exist
+                if (!question.reactions) {
+                    question.reactions = {};
+                }
+                
+                // Increment reaction count
+                if (!question.reactions[reactionType]) {
+                    question.reactions[reactionType] = 0;
+                }
+                question.reactions[reactionType]++;
+                
+                // Update Firebase
+                const questionRef = db.ref(`questions/${userId}`).orderByChild('from').equalTo(fromId);
+                questionRef.once('value').then(snapshot => {
+                    snapshot.forEach(childSnapshot => {
+                        const childData = childSnapshot.val();
+                        if (childData.timestamp === timestamp) {
+                            const updates = {};
+                            updates[`reactions/${reactionType}`] = (childData.reactions && childData.reactions[reactionType]) || 0 + 1;
+                            db.ref(`questions/${userId}/${childSnapshot.key}`).update(updates);
+                        }
+                    });
+                });
+                
+                // Update the UI
+                const countElement = document.querySelector(`.reaction-btn[data-question-id="${questionId}"][data-reaction="${reactionType}"] .reaction-count`);
+                if (countElement) {
+                    countElement.textContent = question.reactions[reactionType];
+                }
+            }
+        }
+        
+        function removeReaction(questionId, reactionType) {
+            const [userId, fromId, timestamp] = questionId.split('_');
+            
+            // Find the question in our local data
+            const question = allQuestions.find(q => 
+                q.askedTo === userId && 
+                q.from === fromId && 
+                q.timestamp === timestamp
+            );
+            
+            if (question && question.reactions && question.reactions[reactionType]) {
+                // Decrement reaction count
+                question.reactions[reactionType]--;
+                if (question.reactions[reactionType] <= 0) {
+                    delete question.reactions[reactionType];
+                }
+                
+                // Update Firebase
+                const questionRef = db.ref(`questions/${userId}`).orderByChild('from').equalTo(fromId);
+                questionRef.once('value').then(snapshot => {
+                    snapshot.forEach(childSnapshot => {
+                        const childData = childSnapshot.val();
+                        if (childData.timestamp === timestamp) {
+                            const updates = {};
+                            updates[`reactions/${reactionType}`] = (childData.reactions && childData.reactions[reactionType]) ? childData.reactions[reactionType] - 1 : 0;
+                            if (updates[`reactions/${reactionType}`] <= 0) {
+                                updates[`reactions/${reactionType}`] = null; // Remove if count is 0 or less
+                            }
+                            db.ref(`questions/${userId}/${childSnapshot.key}`).update(updates);
+                        }
+                    });
+                });
+                
+                // Update the UI
+                const countElement = document.querySelector(`.reaction-btn[data-question-id="${questionId}"][data-reaction="${reactionType}"] .reaction-count`);
+                if (countElement) {
+                    countElement.textContent = question.reactions[reactionType] || 0;
+                }
+                
+                // Remove from session storage
+                delete sessionReactions[questionId];
+                sessionStorage.setItem('reactions', JSON.stringify(sessionReactions));
+            }
         }
         
         document.addEventListener('DOMContentLoaded', function() {
