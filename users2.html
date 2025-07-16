@@ -426,7 +426,7 @@
         };
 
         // Change recipient randomly
-       // Change recipient randomly - optimized version
+      // Change recipient randomly - optimized version using local data
         async function changeRecipient() {
             if (!currentUserId) {
                 showMessage('error', 'Najpierw załaduj swój profil');
@@ -434,13 +434,8 @@
             }
         
             try {
-                // Only fetch user IDs from Firebase
-                const usersRef = firebase.database().ref('/users');
-                const snapshot = await usersRef.once('value');
-                const usersData = snapshot.val() || [];
-                
-                // Extract only user IDs
-                const userIds = usersData.map(user => user.id).filter(id => id !== currentUserId);
+                // Use the locally available users array instead of downloading again
+                const userIds = users.map(user => user.id).filter(id => id !== currentUserId);
                 
                 if (userIds.length === 0) {
                     showMessage('error', 'Brak dostępnych odbiorców');
