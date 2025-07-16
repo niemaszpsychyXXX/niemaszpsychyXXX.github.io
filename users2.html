@@ -603,32 +603,109 @@
         }
 
         // Initialize Firebase
-        async function initFirebase() {
-        try {
-            app = firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            
-            // Initialize data monitoring
-            firebaseMonitor.init();
-            
-            // Your existing database listener
-            const dbRef = firebase.database().ref('/');
-            dbRef.on('value', (snapshot) => {
-                const data = snapshot.val() || {};
-                users = data.users || [];
-                assignments = data.assignments || {};
-                questions = data.questions || {};
-                settings = data.settings || { mode: 'open_both' };
-                
-                updateUI();
-            });
-            
-        } catch (error) {
-            console.error('Błąd inicjalizacji Firebase:', error);
-            showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
-            document.body.classList.add('theme-loaded');
+        // Initialize Firebase
+async function initFirebase() {
+    try {
+        app = firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        
+        // Initialize data monitoring
+        firebaseMonitor.init();
+        
+        // Get current user ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        let userId = urlParams.get('user');
+        
+        // If no user ID in URL, check for code
+        if (!userId) {
+            const userCode = urlParams.get('code');
+            if (userCode) {
+                // Listen for users to find our user by code
+                firebase.database().ref('users').on('value', (snapshot) => {
+                    users = snapshot.val() || [];
+                    const user = users.find(u => u.code === userCode);
+                    if (user) {
+                        userId = user.id;
+                        currentUserId = userId;
+                        setupUserSpecificListeners(userId);
+                    }
+                });
+                return;
+            }
         }
+        
+        if (userId) {
+            currentUserId = userId;
+            setupUserSpecificListeners(userId);
+        }
+        
+    } catch (error) {
+        console.error('Błąd inicjalizacji Firebase:', error);
+        showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
+        document.body.classList.add('theme-loaded');
     }
+}
+
+        function setupUserSpecificListeners(userId) {
+    // Listen only for this user's questions (incoming)
+    firebase.database().ref(`questions/${userId}`).on('value', (snapshot) => {
+        questions[userId] = snapshot.val() || [];
+        updateReceivedQuestions();
+    });
+    
+    // Listen for questions this user has asked (outgoing)
+    firebase.database().ref('questions').on('child_added', (questionsSnapshot) => {
+        const targetUserId = questionsSnapshot.key;
+        const targetQuestions = questionsSnapshot.val() || [];
+        
+        // Check each question to see if it's from our user
+        targetQuestions.forEach((question, index) => {
+            if (question.from === userId) {
+                if (!questions[targetUserId]) questions[targetUserId] = [];
+                questions[targetUserId][index] = question;
+                updateAskedQuestions();
+            }
+        });
+    });
+    
+    // Listen for changes to assignments (only our user's assignment)
+    firebase.database().ref(`assignments/${userId}`).on('value', (snapshot) => {
+        assignments[userId] = snapshot.val();
+        updateUI();
+    });
+    
+    // Listen for user data changes (only our user)
+    firebase.database().ref(`users/${userId}`).on('value', (snapshot) => {
+        const userData = snapshot.val();
+        if (userData) {
+            // Update our users array
+            const userIndex = users.findIndex(u => u.id === userId);
+            if (userIndex >= 0) {
+                users[userIndex] = {...users[userIndex], ...userData};
+            } else {
+                users.push({id: userId, ...userData});
+            }
+            
+            applyTheme(userData);
+            updateUI();
+        }
+    });
+    
+    // Listen for settings changes
+    firebase.database().ref('settings').on('value', (snapshot) => {
+        settings = snapshot.val() || { mode: 'open_both' };
+    });
+    
+    // Initial data load
+    firebase.database().ref().once('value').then((snapshot) => {
+        const data = snapshot.val() || {};
+        users = data.users || [];
+        assignments = data.assignments || {};
+        questions = data.questions || {};
+        settings = data.settings || { mode: 'open_both' };
+        
+        updateUI();
+    });
 
         // Display message
         function showMessage(type, text) {
