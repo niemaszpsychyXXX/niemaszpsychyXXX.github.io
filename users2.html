@@ -426,34 +426,50 @@
         };
 
         // Change recipient randomly
-        function changeRecipient() {
+       // Change recipient randomly - optimized version
+        async function changeRecipient() {
             if (!currentUserId) {
                 showMessage('error', 'Najpierw załaduj swój profil');
                 return;
             }
         
-            // Filter out the current user from possible recipients
-            const possibleRecipients = users.filter(user => user.id !== currentUserId);
-            
-            if (possibleRecipients.length === 0) {
-                showMessage('error', 'Brak dostępnych odbiorców');
-                return;
-            }
+            try {
+                // Only fetch user IDs from Firebase
+                const usersRef = firebase.database().ref('/users');
+                const snapshot = await usersRef.once('value');
+                const usersData = snapshot.val() || [];
+                
+                // Extract only user IDs
+                const userIds = usersData.map(user => user.id).filter(id => id !== currentUserId);
+                
+                if (userIds.length === 0) {
+                    showMessage('error', 'Brak dostępnych odbiorców');
+                    return;
+                }
         
-            // Select random recipient
-            const randomIndex = Math.floor(Math.random() * possibleRecipients.length);
-            const newRecipient = possibleRecipients[randomIndex].id;
-            
-            // Update assignment in Firebase data
-            assignments[currentUserId] = newRecipient;
-            
-            // Save to Firebase
-            saveDataToFirebase();
-            
-            // Update UI
-            updateUI();
-            
-            showMessage('success', `Odbiorca zmieniony na: ${users.find(u => u.id === newRecipient).name}`);
+                // Select random recipient
+                const randomIndex = Math.floor(Math.random() * userIds.length);
+                const newRecipient = userIds[randomIndex];
+                
+                // Update assignment locally
+                assignments[currentUserId] = newRecipient;
+                
+                // Only update assignments in Firebase, not the entire database
+                await firebase.database().ref('/assignments').set(assignments);
+                
+                // Find recipient name for display (from local users array)
+                const recipientUser = users.find(u => u.id === newRecipient);
+                const recipientName = recipientUser ? recipientUser.name : 'Nieznany użytkownik';
+                
+                // Update UI
+                updateUI();
+                
+                showMessage('success', `Odbiorca zmieniony na: ${recipientName}`);
+                
+            } catch (error) {
+                console.error('Błąd zmiany odbiorcy:', error);
+                showMessage('error', 'Błąd zmiany odbiorcy: ' + error.message);
+            }
         }
         
         // Pre-determine theme to avoid flash
