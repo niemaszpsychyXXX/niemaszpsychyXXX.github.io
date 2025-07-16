@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikacja Anonimowych Pytań</title>
     <style>
         * {
             margin: 0;
@@ -329,6 +330,45 @@
             display: none;
         }
         
+        .recipient-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .recipient-select {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .recipient-select:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px var(--focus-shadow);
+        }
+        
+        .change-recipient-btn {
+            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        .change-recipient-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px var(--hover-shadow);
+        }
+        
         @media (max-width: 768px) {
             body {
                 padding: 20px 10px;
@@ -346,6 +386,14 @@
             
             .section h2, .user-section h2 {
                 font-size: 1.5em;
+            }
+            
+            .recipient-controls {
+                flex-direction: column;
+            }
+            
+            .change-recipient-btn {
+                width: 100%;
             }
         }
     </style>
@@ -367,7 +415,12 @@
                     <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
                 </div>
                 <button onclick="sendQuestion()">Wyślij Pytanie</button>
-                <button onclick="changeRecipient()" style="margin-top: 10px; background: var(--secondary-color);">Wybierz odbiorcę</button>
+                <div class="recipient-controls">
+                    <select id="recipientSelect" class="recipient-select">
+                        <option value="">Wybierz odbiorcę...</option>
+                    </select>
+                    <button class="change-recipient-btn" onclick="saveRecipient()">Zmień odbiorcę</button>
+                </div>
                 <div id="questionMessage"></div>
             </div>
             
@@ -396,9 +449,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script>
-       
-        
-
         // Global variables
         let app = null;
         let db = null;
@@ -418,106 +468,51 @@
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
 
-        // Change recipient function
-        async function changeRecipient() {
+        // Save recipient function
+        async function saveRecipient() {
             if (!currentUserId) {
                 showMessage('error', 'Najpierw załaduj swój profil');
                 return;
             }
-        
-            const modal = document.createElement('div');
-            modal.style.position = 'fixed';
-            modal.style.top = '0';
-            modal.style.left = '0';
-            modal.style.width = '100%';
-            modal.style.height = '100%';
-            modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-            modal.style.display = 'flex';
-            modal.style.justifyContent = 'center';
-            modal.style.alignItems = 'center';
-            modal.style.zIndex = '1000';
-        
-            const modalContent = document.createElement('div');
-            modalContent.style.backgroundColor = 'white';
-            modalContent.style.padding = '20px';
-            modalContent.style.borderRadius = '10px';
-            modalContent.style.width = '80%';
-            modalContent.style.maxWidth = '500px';
-        
-            const availableRecipients = users.filter(user => user.id !== currentUserId);
-        
-            if (availableRecipients.length === 0) {
-                showMessage('error', 'Brak dostępnych odbiorców');
+            
+            const select = document.getElementById('recipientSelect');
+            const selectedValue = select.value;
+            
+            if (!selectedValue) {
+                showMessage('error', 'Wybierz odbiorcę');
                 return;
             }
+            
+            try {
+                assignments[currentUserId] = selectedValue;
+                await firebase.database().ref('/assignments').set(assignments);
+                const recipientUser = users.find(u => u.id === selectedValue);
+                const recipientName = recipientUser ? recipientUser.name : 'Nieznany użytkownik';
+                updateUI();
+                showMessage('success', `Odbiorca zmieniony na: ${recipientName}`);
+            } catch (error) {
+                console.error('Błąd zmiany odbiorcy:', error);
+                showMessage('error', 'Błąd zmiany odbiorcy: ' + error.message);
+            }
+        }
         
-            const select = document.createElement('select');
-            select.style.width = '100%';
-            select.style.padding = '10px';
-            select.style.marginBottom = '15px';
-            select.style.borderRadius = '5px';
-            select.style.border = '1px solid #ddd';
-        
-            const defaultOption = document.createElement('option');
-            defaultOption.value = '';
-            defaultOption.textContent = 'Wybierz odbiorcę...';
-            select.appendChild(defaultOption);
-        
+        function populateRecipientSelect() {
+            const select = document.getElementById('recipientSelect');
+            select.innerHTML = '<option value="">Wybierz odbiorcę...</option>';
+            
+            if (!currentUserId || users.length === 0) return;
+            
+            const availableRecipients = users.filter(user => user.id !== currentUserId);
+            
             availableRecipients.forEach(user => {
                 const option = document.createElement('option');
                 option.value = user.id;
                 option.textContent = `${user.name} (${user.threadsNick || 'brak nicku'})`;
+                if (assignments[currentUserId] === user.id) {
+                    option.selected = true;
+                }
                 select.appendChild(option);
             });
-        
-            const buttonContainer = document.createElement('div');
-            buttonContainer.style.display = 'flex';
-            buttonContainer.style.justifyContent = 'flex-end';
-            buttonContainer.style.gap = '10px';
-        
-            const cancelButton = document.createElement('button');
-            cancelButton.textContent = 'Anuluj';
-            cancelButton.style.padding = '10px 15px';
-            cancelButton.style.border = 'none';
-            cancelButton.style.borderRadius = '5px';
-            cancelButton.style.cursor = 'pointer';
-            cancelButton.onclick = () => document.body.removeChild(modal);
-        
-            const confirmButton = document.createElement('button');
-            confirmButton.textContent = 'Zapisz';
-            confirmButton.style.padding = '10px 15px';
-            confirmButton.style.backgroundColor = 'var(--secondary-color)';
-            confirmButton.style.color = 'white';
-            confirmButton.style.border = 'none';
-            confirmButton.style.borderRadius = '5px';
-            confirmButton.style.cursor = 'pointer';
-            confirmButton.onclick = async () => {
-                if (!select.value) {
-                    showMessage('error', 'Wybierz odbiorcę');
-                    return;
-                }
-        
-                try {
-                    assignments[currentUserId] = select.value;
-                    await firebase.database().ref('/assignments').set(assignments);
-                    const recipientUser = users.find(u => u.id === select.value);
-                    const recipientName = recipientUser ? recipientUser.name : 'Nieznany użytkownik';
-                    updateUI();
-                    showMessage('success', `Odbiorca zmieniony na: ${recipientName}`);
-                    document.body.removeChild(modal);
-                } catch (error) {
-                    console.error('Błąd zmiany odbiorcy:', error);
-                    showMessage('error', 'Błąd zmiany odbiorcy: ' + error.message);
-                }
-            };
-        
-            modalContent.innerHTML = '<h3 style="margin-bottom: 15px;">Wybierz odbiorcę pytań</h3>';
-            modalContent.appendChild(select);
-            buttonContainer.appendChild(cancelButton);
-            buttonContainer.appendChild(confirmButton);
-            modalContent.appendChild(buttonContainer);
-            modal.appendChild(modalContent);
-            document.body.appendChild(modal);
         }
         
         function preloadTheme() {
@@ -594,7 +589,6 @@
                 showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
                 document.body.classList.add('theme-loaded');
             }
-                 firebaseMonitor.init();
         }
 
         function setupUserSpecificListeners(userId) {
@@ -647,7 +641,6 @@
                 settings = data.settings || { mode: 'open_both' };
                 updateUI();
             });
-         
         }
 
         function showMessage(type, text) {
@@ -692,6 +685,7 @@
                 document.getElementById('assignmentInfo').textContent = 'Brak dostępnego przydziału';
             }
             
+            populateRecipientSelect();
             updateReceivedQuestions();
             updateAskedQuestions();
             
@@ -988,93 +982,94 @@
             initFirebase();
         });
 
-         // Enhanced Firebase Data Monitor
-    const firebaseMonitor = {
-        totalBytes: 0,
-        sessionBytes: 0,
-        monitorVisible: false,
-        detailedView: false,
-        
-        init: function() {
-            // Intercept Firebase data events to measure traffic
-            const originalOn = firebase.database.Reference.prototype.on;
-            const monitor = this;
+        // Enhanced Firebase Data Monitor
+        const firebaseMonitor = {
+            totalBytes: 0,
+            sessionBytes: 0,
+            monitorVisible: false,
+            detailedView: false,
             
-            firebase.database.Reference.prototype.on = function() {
-                const callback = arguments[arguments.length - 1];
-                if (typeof callback === 'function') {
-                    arguments[arguments.length - 1] = function(snapshot) {
-                        // Calculate data size
-                        const dataSize = monitor.calculateDataSize(snapshot);
-                        monitor.totalBytes += dataSize;
-                        monitor.sessionBytes += dataSize;
-                        monitor.updateDisplay();
-                        return callback.apply(this, arguments);
-                    };
+            init: function() {
+                // Intercept Firebase data events to measure traffic
+                const originalOn = firebase.database.Reference.prototype.on;
+                const monitor = this;
+                
+                firebase.database.Reference.prototype.on = function() {
+                    const callback = arguments[arguments.length - 1];
+                    if (typeof callback === 'function') {
+                        arguments[arguments.length - 1] = function(snapshot) {
+                            // Calculate data size
+                            const dataSize = monitor.calculateDataSize(snapshot);
+                            monitor.totalBytes += dataSize;
+                            monitor.sessionBytes += dataSize;
+                            monitor.updateDisplay();
+                            return callback.apply(this, arguments);
+                        };
+                    }
+                    return originalOn.apply(this, arguments);
+                };
+                
+                // Load saved total from localStorage
+                const savedTotal = localStorage.getItem('firebaseDataTotal');
+                if (savedTotal) {
+                    this.totalBytes = parseInt(savedTotal);
                 }
-                return originalOn.apply(this, arguments);
-            };
+                
+                console.log("Firebase Monitor initialized");
+            },
             
-            // Load saved total from localStorage
-            const savedTotal = localStorage.getItem('firebaseDataTotal');
-            if (savedTotal) {
-                this.totalBytes = parseInt(savedTotal);
-            }
+            calculateDataSize: function(snapshot) {
+                try {
+                    const dataStr = JSON.stringify(snapshot.val());
+                    return new Blob([dataStr]).size;
+                } catch (e) {
+                    console.error("Error calculating data size:", e);
+                    return 0;
+                }
+            },
             
-            console.log("Firebase Monitor initialized");
-        },
-        
-        calculateDataSize: function(snapshot) {
-            try {
-                const dataStr = JSON.stringify(snapshot.val());
-                return new Blob([dataStr]).size;
-            } catch (e) {
-                console.error("Error calculating data size:", e);
-                return 0;
-            }
-        },
-        
-        updateDisplay: function() {
-            // Save total to localStorage
-            localStorage.setItem('firebaseDataTotal', this.totalBytes.toString());
+            updateDisplay: function() {
+                // Save total to localStorage
+                localStorage.setItem('firebaseDataTotal', this.totalBytes.toString());
+                
+                // Update UI if visible
+                if (this.monitorVisible) {
+                    document.getElementById('totalData').textContent = this.formatBytes(this.totalBytes);
+                    document.getElementById('sessionData').textContent = this.formatBytes(this.sessionBytes);
+                }
+            },
             
-            // Update UI if visible
-            if (this.monitorVisible) {
-                document.getElementById('totalData').textContent = this.formatBytes(this.totalBytes);
-                document.getElementById('sessionData').textContent = this.formatBytes(this.sessionBytes);
-            }
-        },
-        
-        formatBytes: function(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        },
-        
-        toggleDetailedView: function() {
-            this.monitorVisible = !this.monitorVisible;
-            document.getElementById('dataMonitor').style.display = this.monitorVisible ? 'block' : 'none';
+            formatBytes: function(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            },
             
-            if (this.monitorVisible) {
+            toggleDetailedView: function() {
+                this.monitorVisible = !this.monitorVisible;
+                document.getElementById('dataMonitor').style.display = this.monitorVisible ? 'block' : 'none';
+                
+                if (this.monitorVisible) {
+                    this.updateDisplay();
+                }
+            },
+            
+            resetSession: function() {
+                this.sessionBytes = 0;
                 this.updateDisplay();
             }
-        },
-        
-        resetSession: function() {
-            this.sessionBytes = 0;
-            this.updateDisplay();
-        }
-    };
+        };
     </script>
 
     <div id="dataMonitor" style="display: none; position: fixed; bottom: 100px; right: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 1000; max-width: 300px;">
-    <h3 style="margin-top: 0; color: #333;">Data Usage Monitor</h3>
-    <div id="dataStats">
-        <p>Total data received: <span id="totalData">0 KB</span></p>
-        <p>Current session: <span id="sessionData">0 KB</span></p>
+        <h3 style="margin-top: 0; color: #333;">Data Usage Monitor</h3>
+        <div id="dataStats">
+            <p>Total data received: <span id="totalData">0 KB</span></p>
+            <p>Current session: <span id="sessionData">0 KB</span></p>
+        </div>
+        <button onclick="firebaseMonitor.toggleDetailedView()" style="margin-top: 10px; padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 4px;">Close</button>
     </div>
-    <button onclick="firebaseMonitor.toggleDetailedView()" style="margin-top: 10px; padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 4px;">Close</button>
 </body>
 </html>
