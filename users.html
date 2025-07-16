@@ -554,7 +554,6 @@
             try {
                 app = firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
-                firebaseMonitor.init();
                 
                 const urlParams = new URLSearchParams(window.location.search);
                 let userId = urlParams.get('user');
