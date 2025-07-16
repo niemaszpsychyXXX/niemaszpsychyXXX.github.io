@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -12,7 +11,6 @@
         }
         
         :root {
-            /* Neutral default - no theme colors until determined */
             --primary-bg: #f5f5f5;
             --primary-color: #666;
             --secondary-color: #666;
@@ -22,7 +20,6 @@
             --focus-shadow: rgba(102, 102, 102, 0.1);
         }
         
-        /* Pink Theme */
         .theme-pink {
             --primary-bg: #fccbe2;
             --primary-color: #b6196e;
@@ -33,7 +30,6 @@
             --focus-shadow: rgba(184, 50, 128, 0.1);
         }
         
-        /* Blue Theme */
         .theme-blue {
             --primary-bg: #cbe2fc;
             --primary-color: #196eb6;
@@ -44,7 +40,6 @@
             --focus-shadow: rgba(50, 128, 184, 0.1);
         }
         
-        /* Green Theme */
         .theme-green {
             --primary-bg: #cbfce2;
             --primary-color: #19b66e;
@@ -61,7 +56,6 @@
             min-height: 100vh;
             padding: 40px 20px;
             transition: background-color 0.3s ease;
-            /* Hide content until theme is applied */
             opacity: 0;
             transition: opacity 0.3s ease, background-color 0.3s ease;
         }
@@ -335,7 +329,6 @@
             display: none;
         }
         
-        /* Mobile responsiveness */
         @media (max-width: 768px) {
             body {
                 padding: 20px 10px;
@@ -394,18 +387,25 @@
         </div>
     </div>
 
-  <button id="dataMonitorToggle" style="position: fixed; bottom: 60px; right: 20px; background: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 12px; z-index: 1000;">
-    📊 Data Usage
-</button>
+    <button id="dataMonitorToggle" style="position: fixed; bottom: 60px; right: 20px; background: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 12px; z-index: 1000;">
+        📊 Data Usage
+    </button>
 
     <button id="adminAccessBtn" class="admin-access-btn hidden" onclick="window.location.href='admin.html'">Panel Admina</button>
 
-    <!-- Load Firebase SDK first -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="firebase-data-monitor.js"></script>
-  
     <script>
+        // Firebase Data Monitor (simplified version)
+        const firebaseMonitor = {
+            init: function() {
+                console.log("Firebase Monitor initialized");
+            },
+            toggleDetailedView: function() {
+                console.log("Toggling detailed view");
+            }
+        };
+
         // Global variables
         let app = null;
         let db = null;
@@ -413,7 +413,7 @@
         let assignments = {};
         let questions = {};
         let currentUserId = null;
-        let settings = { mode: 'open_both' }; // Default mode
+        let settings = { mode: 'open_both' };
         
         // Firebase configuration
         const firebaseConfig = {
@@ -425,14 +425,13 @@
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
 
-        // Change recipient randomly
-      async function changeRecipient() {
+        // Change recipient function
+        async function changeRecipient() {
             if (!currentUserId) {
                 showMessage('error', 'Najpierw załaduj swój profil');
                 return;
             }
         
-            // Create modal dialog
             const modal = document.createElement('div');
             modal.style.position = 'fixed';
             modal.style.top = '0';
@@ -445,7 +444,6 @@
             modal.style.alignItems = 'center';
             modal.style.zIndex = '1000';
         
-            // Create modal content
             const modalContent = document.createElement('div');
             modalContent.style.backgroundColor = 'white';
             modalContent.style.padding = '20px';
@@ -453,7 +451,6 @@
             modalContent.style.width = '80%';
             modalContent.style.maxWidth = '500px';
         
-            // Get available recipients (excluding current user)
             const availableRecipients = users.filter(user => user.id !== currentUserId);
         
             if (availableRecipients.length === 0) {
@@ -461,7 +458,6 @@
                 return;
             }
         
-            // Create dropdown
             const select = document.createElement('select');
             select.style.width = '100%';
             select.style.padding = '10px';
@@ -469,13 +465,11 @@
             select.style.borderRadius = '5px';
             select.style.border = '1px solid #ddd';
         
-            // Add default option
             const defaultOption = document.createElement('option');
             defaultOption.value = '';
             defaultOption.textContent = 'Wybierz odbiorcę...';
             select.appendChild(defaultOption);
         
-            // Add user options
             availableRecipients.forEach(user => {
                 const option = document.createElement('option');
                 option.value = user.id;
@@ -483,7 +477,6 @@
                 select.appendChild(option);
             });
         
-            // Create buttons
             const buttonContainer = document.createElement('div');
             buttonContainer.style.display = 'flex';
             buttonContainer.style.justifyContent = 'flex-end';
@@ -512,19 +505,11 @@
                 }
         
                 try {
-                    // Update assignment locally
                     assignments[currentUserId] = select.value;
-                    
-                    // Update assignments in Firebase
                     await firebase.database().ref('/assignments').set(assignments);
-                    
-                    // Find recipient name for display
                     const recipientUser = users.find(u => u.id === select.value);
                     const recipientName = recipientUser ? recipientUser.name : 'Nieznany użytkownik';
-                    
-                    // Update UI
                     updateUI();
-                    
                     showMessage('success', `Odbiorca zmieniony na: ${recipientName}`);
                     document.body.removeChild(modal);
                 } catch (error) {
@@ -533,7 +518,6 @@
                 }
             };
         
-            // Build modal
             modalContent.innerHTML = '<h3 style="margin-bottom: 15px;">Wybierz odbiorcę pytań</h3>';
             modalContent.appendChild(select);
             buttonContainer.appendChild(cancelButton);
@@ -543,20 +527,15 @@
             document.body.appendChild(modal);
         }
         
-        // Pre-determine theme to avoid flash
         function preloadTheme() {
             const urlParams = new URLSearchParams(window.location.search);
             let userId = urlParams.get('user');
             
             if (!userId) {
                 const userCode = urlParams.get('code');
-                if (userCode) {
-                    // We'll need to wait for Firebase data to find user by code
-                    return;
-                }
+                if (userCode) return;
             }
             
-            // If we have a userId, we can try to get theme from localStorage cache
             const cachedTheme = localStorage.getItem(`user_theme_${userId}`);
             if (cachedTheme) {
                 applyTheme({ theme: cachedTheme });
@@ -564,192 +543,149 @@
             }
         }
 
-        // Apply theme based on user data
         function applyTheme(user) {
             const body = document.body;
-            
-            // Remove existing theme classes
             body.classList.remove('theme-blue', 'theme-green', 'theme-pink');
             
-            // Apply theme based on user data
             if (user && user.theme) {
                 const theme = user.theme.toLowerCase();
                 switch(theme) {
-                    case 'blue':
-                        body.classList.add('theme-blue');
-                        break;
-                    case 'green':
-                        body.classList.add('theme-green');
-                        break;
-                    case 'pink':
-                        body.classList.add('theme-pink');
-                        break;
-                    default:
-                        body.classList.add('theme-pink'); // Default fallback
-                        break;
+                    case 'blue': body.classList.add('theme-blue'); break;
+                    case 'green': body.classList.add('theme-green'); break;
+                    case 'pink': body.classList.add('theme-pink'); break;
+                    default: body.classList.add('theme-pink'); break;
                 }
                 
-                // Cache the theme for faster loading next time
                 if (currentUserId) {
                     localStorage.setItem(`user_theme_${currentUserId}`, theme);
                 }
             } else {
-                // Default to pink if no theme is specified
                 body.classList.add('theme-pink');
             }
             
-            // Show the page content
             body.classList.add('theme-loaded');
         }
 
-        // Initialize Firebase
-        // Initialize Firebase
-async function initFirebase() {
-    try {
-        app = firebase.initializeApp(firebaseConfig);
-        db = firebase.database();
-        
-        // Initialize data monitoring
-        firebaseMonitor.init();
-        
-        // Get current user ID from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        let userId = urlParams.get('user');
-        
-        // If no user ID in URL, check for code
-        if (!userId) {
-            const userCode = urlParams.get('code');
-            if (userCode) {
-                // Listen for users to find our user by code
-                firebase.database().ref('users').on('value', (snapshot) => {
-                    users = snapshot.val() || [];
-                    const user = users.find(u => u.code === userCode);
-                    if (user) {
-                        userId = user.id;
-                        currentUserId = userId;
-                        setupUserSpecificListeners(userId);
+        async function initFirebase() {
+            try {
+                app = firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                firebaseMonitor.init();
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                let userId = urlParams.get('user');
+                
+                if (!userId) {
+                    const userCode = urlParams.get('code');
+                    if (userCode) {
+                        firebase.database().ref('users').on('value', (snapshot) => {
+                            users = snapshot.val() || [];
+                            const user = users.find(u => u.code === userCode);
+                            if (user) {
+                                userId = user.id;
+                                currentUserId = userId;
+                                setupUserSpecificListeners(userId);
+                            }
+                        });
+                        return;
                     }
-                });
-                return;
+                }
+                
+                if (userId) {
+                    currentUserId = userId;
+                    setupUserSpecificListeners(userId);
+                }
+                
+            } catch (error) {
+                console.error('Błąd inicjalizacji Firebase:', error);
+                showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
+                document.body.classList.add('theme-loaded');
             }
         }
-        
-        if (userId) {
-            currentUserId = userId;
-            setupUserSpecificListeners(userId);
-        }
-        
-    } catch (error) {
-        console.error('Błąd inicjalizacji Firebase:', error);
-        showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
-        document.body.classList.add('theme-loaded');
-    }
-}
 
         function setupUserSpecificListeners(userId) {
-    // Listen only for this user's questions (incoming)
-    firebase.database().ref(`questions/${userId}`).on('value', (snapshot) => {
-        questions[userId] = snapshot.val() || [];
-        updateReceivedQuestions();
-    });
-    
-    // Listen for questions this user has asked (outgoing)
-    firebase.database().ref('questions').on('child_added', (questionsSnapshot) => {
-        const targetUserId = questionsSnapshot.key;
-        const targetQuestions = questionsSnapshot.val() || [];
-        
-        // Check each question to see if it's from our user
-        targetQuestions.forEach((question, index) => {
-            if (question.from === userId) {
-                if (!questions[targetUserId]) questions[targetUserId] = [];
-                questions[targetUserId][index] = question;
-                updateAskedQuestions();
-            }
-        });
-    });
-        }
-    
-    // Listen for changes to assignments (only our user's assignment)
-    firebase.database().ref(`assignments/${userId}`).on('value', (snapshot) => {
-        assignments[userId] = snapshot.val();
-        updateUI();
-    });
-    
-    // Listen for user data changes (only our user)
-    firebase.database().ref(`users/${userId}`).on('value', (snapshot) => {
-        const userData = snapshot.val();
-        if (userData) {
-            // Update our users array
-            const userIndex = users.findIndex(u => u.id === userId);
-            if (userIndex >= 0) {
-                users[userIndex] = {...users[userIndex], ...userData};
-            } else {
-                users.push({id: userId, ...userData});
-            }
+            firebase.database().ref(`questions/${userId}`).on('value', (snapshot) => {
+                questions[userId] = snapshot.val() || [];
+                updateReceivedQuestions();
+            });
             
-            applyTheme(userData);
-            updateUI();
+            firebase.database().ref('questions').on('child_added', (questionsSnapshot) => {
+                const targetUserId = questionsSnapshot.key;
+                const targetQuestions = questionsSnapshot.val() || [];
+                
+                targetQuestions.forEach((question, index) => {
+                    if (question.from === userId) {
+                        if (!questions[targetUserId]) questions[targetUserId] = [];
+                        questions[targetUserId][index] = question;
+                        updateAskedQuestions();
+                    }
+                });
+            });
+            
+            firebase.database().ref(`assignments/${userId}`).on('value', (snapshot) => {
+                assignments[userId] = snapshot.val();
+                updateUI();
+            });
+            
+            firebase.database().ref(`users/${userId}`).on('value', (snapshot) => {
+                const userData = snapshot.val();
+                if (userData) {
+                    const userIndex = users.findIndex(u => u.id === userId);
+                    if (userIndex >= 0) {
+                        users[userIndex] = {...users[userIndex], ...userData};
+                    } else {
+                        users.push({id: userId, ...userData});
+                    }
+                    applyTheme(userData);
+                    updateUI();
+                }
+            });
+            
+            firebase.database().ref('settings').on('value', (snapshot) => {
+                settings = snapshot.val() || { mode: 'open_both' };
+            });
+            
+            firebase.database().ref().once('value').then((snapshot) => {
+                const data = snapshot.val() || {};
+                users = data.users || [];
+                assignments = data.assignments || {};
+                questions = data.questions || {};
+                settings = data.settings || { mode: 'open_both' };
+                updateUI();
+            });
         }
-    });
-    
-    // Listen for settings changes
-    firebase.database().ref('settings').on('value', (snapshot) => {
-        settings = snapshot.val() || { mode: 'open_both' };
-    });
-    
-    // Initial data load
-    firebase.database().ref().once('value').then((snapshot) => {
-        const data = snapshot.val() || {};
-        users = data.users || [];
-        assignments = data.assignments || {};
-        questions = data.questions || {};
-        settings = data.settings || { mode: 'open_both' };
-        
-        updateUI();
-    });
 
-        // Display message
         function showMessage(type, text) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `${type}-message`;
             messageDiv.textContent = text;
-            
             document.querySelector('.container').insertAdjacentHTML('afterbegin', messageDiv.outerHTML);
-            
             setTimeout(() => {
                 const msg = document.querySelector(`.${type}-message`);
                 if (msg) msg.remove();
             }, type === 'error' ? 5000 : 3000);
         }
 
-        // Update UI after data changes
         function updateUI() {
-            // Check if we have a valid user ID
             const urlParams = new URLSearchParams(window.location.search);
             let userId = urlParams.get('user');
             
-            // If no user ID in URL, check for code
             if (!userId) {
                 const userCode = urlParams.get('code');
                 if (userCode) {
-                    // Find user by code
                     const user = users.find(u => u.code === userCode);
-                    if (user) {
-                        userId = user.id;
-                    }
+                    if (user) userId = user.id;
                 }
             }
             
             const user = users.find(u => u.id === userId);
             if (!user) {
                 showMessage('error', 'Użytkownik nie istnieje w bazie danych');
-                document.body.classList.add('theme-loaded'); // Show page even with error
+                document.body.classList.add('theme-loaded');
                 return;
             }
             
-            // Apply theme based on current user
             applyTheme(user);
-            
             currentUserId = userId;
             const assignedUser = users.find(u => u.id === assignments[userId]);
             
@@ -764,7 +700,6 @@ async function initFirebase() {
             updateReceivedQuestions();
             updateAskedQuestions();
             
-            // Show admin access button if user is admin
             const loginExpiry = localStorage.getItem('adminLoggedIn');
             const currentTime = new Date().getTime();
             if (loginExpiry && currentTime <= parseInt(loginExpiry)) {
@@ -772,7 +707,6 @@ async function initFirebase() {
             }
         }
 
-        // Send question
         function sendQuestion() {
             const questionInput = document.getElementById('questionInput');
             const questionText = questionInput.value.trim();
@@ -798,7 +732,7 @@ async function initFirebase() {
                 text: questionText,
                 timestamp: new Date().toLocaleString(),
                 from: currentUserId,
-                mode: settings.mode || 'open_both' // Store current mode when question is sent
+                mode: settings.mode || 'open_both'
             });
             
             questionInput.value = '';
@@ -811,7 +745,6 @@ async function initFirebase() {
             saveDataToFirebase();
         }
 
-        // Save data to Firebase
         async function saveDataToFirebase() {
             if (!db) {
                 alert('Najpierw połącz się z Firebase');
@@ -823,7 +756,7 @@ async function initFirebase() {
                     users: users,
                     assignments: assignments,
                     questions: questions,
-                    settings: settings, // Include settings in save
+                    settings: settings,
                     lastUpdated: new Date().toISOString()
                 });
             } catch (error) {
@@ -832,10 +765,7 @@ async function initFirebase() {
             }
         }
 
-        // Update received questions with form state preservation and proper sorting (newest first)
         function updateReceivedQuestions() {
-            
-            // Save which textarea had focus before update
             const focusedElement = document.activeElement;
             let focusedIndex = null;
             if (focusedElement && focusedElement.id.startsWith('answer-')) {
@@ -850,20 +780,17 @@ async function initFirebase() {
                 return;
             }
             
-            // Create array of questions with original indices for proper answer handling
             const questionsWithIndices = userQuestions.map((question, originalIndex) => ({
                 ...question,
                 originalIndex: originalIndex
             }));
             
-            // Sort by timestamp (newest first)
             questionsWithIndices.sort((a, b) => {
                 const dateA = new Date(a.timestamp);
                 const dateB = new Date(b.timestamp);
-                return dateB - dateA; // Newest first (descending order)
+                return dateB - dateA;
             });
             
-            // Save current form states before updating
             const currentFormStates = {};
             questionsWithIndices.forEach((question, displayIndex) => {
                 const answerTextarea = document.getElementById(`answer-${displayIndex}`);
@@ -920,7 +847,6 @@ async function initFirebase() {
                 `;
                 receivedQuestionsDiv.prepend(questionItem);
                 
-                // Restore form state after creating the element
                 if (currentFormStates[displayIndex] && !question.answer) {
                     const answerTextarea = document.getElementById(`answer-${displayIndex}`);
                     const secretCheckbox = document.getElementById(`secret-${displayIndex}`);
@@ -934,23 +860,17 @@ async function initFirebase() {
                 }
             });
 
-            // Restore focus after update
             if (focusedIndex !== null) {
                 const newTextarea = document.getElementById(`answer-${focusedIndex}`);
                 if (newTextarea) {
                     newTextarea.focus();
-                    // Restore cursor position
                     newTextarea.selectionStart = focusedElement.selectionStart;
                     newTextarea.selectionEnd = focusedElement.selectionEnd;
                 }
             }
         }
 
-        // Send answer to question
         function sendAnswer(questionIndex) {
-            const answerTextarea = document.querySelector(`textarea[id^="answer-"]`);
-            const secretCheckbox = document.querySelector(`input[id^="secret-"]:checked`);
-            
             const allTextareas = document.querySelectorAll('textarea[id^="answer-"]');
             const allCheckboxes = document.querySelectorAll('input[id^="secret-"]');
             
@@ -983,18 +903,16 @@ async function initFirebase() {
                 text: answerText,
                 timestamp: new Date().toLocaleString(),
                 secret: isSecret,
-                mode: settings.mode || 'open_both' // Store current mode when answer is given
+                mode: settings.mode || 'open_both'
             };
             
             saveDataToFirebase();
             updateReceivedQuestions();
         }
 
-        // Update asked questions with consistent styling (newest first)
         function updateAskedQuestions() {
             const askedQuestionsDiv = document.getElementById('askedQuestions');
             
-            // Find all questions asked by this user
             const userQuestions = [];
             Object.keys(questions).forEach(targetUserId => {
                 const targetQuestions = questions[targetUserId] || [];
@@ -1015,7 +933,6 @@ async function initFirebase() {
                 return;
             }
             
-            // Sort by timestamp (newest first)
             userQuestions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             
             askedQuestionsDiv.innerHTML = '';
@@ -1025,7 +942,6 @@ async function initFirebase() {
                 
                 let answerSection = '';
                 if (question.answer) {
-                    // Skip secret answers in public view
                     if (question.answer.secret) {
                         answerSection = `
                             <div class="answer-section">
@@ -1069,10 +985,9 @@ async function initFirebase() {
         }
 
         document.getElementById('dataMonitorToggle').addEventListener('click', () => {
-          firebaseMonitor.toggleDetailedView();
-      });
-      
-        // Initialize application
+            firebaseMonitor.toggleDetailedView();
+        });
+        
         document.addEventListener('DOMContentLoaded', function() {
             preloadTheme();
             initFirebase();
