@@ -667,6 +667,7 @@ async function initFirebase() {
             }
         });
     });
+        }
     
     // Listen for changes to assignments (only our user's assignment)
     firebase.database().ref(`assignments/${userId}`).on('value', (snapshot) => {
