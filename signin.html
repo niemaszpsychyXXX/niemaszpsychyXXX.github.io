@@ -507,7 +507,7 @@
         
         // Show user's link
         function showUserLink(code) {
-            const baseUrl = window.location.href.replace('signin.html', 'users.html');
+            const baseUrl = window.location.href.replace('signin.html', 'users');
             const shortLink = `${baseUrl}?code=${code}`;
             
             document.getElementById('userLink').textContent = shortLink;
