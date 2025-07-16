@@ -601,6 +601,7 @@
                 showMessage('error', 'Błąd połączenia z Firebase: ' + error.message);
                 document.body.classList.add('theme-loaded');
             }
+                 firebaseMonitor.init();
         }
 
         function setupUserSpecificListeners(userId) {
@@ -653,6 +654,7 @@
                 settings = data.settings || { mode: 'open_both' };
                 updateUI();
             });
+         
         }
 
         function showMessage(type, text) {
@@ -992,6 +994,94 @@
             preloadTheme();
             initFirebase();
         });
+
+         // Enhanced Firebase Data Monitor
+    const firebaseMonitor = {
+        totalBytes: 0,
+        sessionBytes: 0,
+        monitorVisible: false,
+        detailedView: false,
+        
+        init: function() {
+            // Intercept Firebase data events to measure traffic
+            const originalOn = firebase.database.Reference.prototype.on;
+            const monitor = this;
+            
+            firebase.database.Reference.prototype.on = function() {
+                const callback = arguments[arguments.length - 1];
+                if (typeof callback === 'function') {
+                    arguments[arguments.length - 1] = function(snapshot) {
+                        // Calculate data size
+                        const dataSize = monitor.calculateDataSize(snapshot);
+                        monitor.totalBytes += dataSize;
+                        monitor.sessionBytes += dataSize;
+                        monitor.updateDisplay();
+                        return callback.apply(this, arguments);
+                    };
+                }
+                return originalOn.apply(this, arguments);
+            };
+            
+            // Load saved total from localStorage
+            const savedTotal = localStorage.getItem('firebaseDataTotal');
+            if (savedTotal) {
+                this.totalBytes = parseInt(savedTotal);
+            }
+            
+            console.log("Firebase Monitor initialized");
+        },
+        
+        calculateDataSize: function(snapshot) {
+            try {
+                const dataStr = JSON.stringify(snapshot.val());
+                return new Blob([dataStr]).size;
+            } catch (e) {
+                console.error("Error calculating data size:", e);
+                return 0;
+            }
+        },
+        
+        updateDisplay: function() {
+            // Save total to localStorage
+            localStorage.setItem('firebaseDataTotal', this.totalBytes.toString());
+            
+            // Update UI if visible
+            if (this.monitorVisible) {
+                document.getElementById('totalData').textContent = this.formatBytes(this.totalBytes);
+                document.getElementById('sessionData').textContent = this.formatBytes(this.sessionBytes);
+            }
+        },
+        
+        formatBytes: function(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        },
+        
+        toggleDetailedView: function() {
+            this.monitorVisible = !this.monitorVisible;
+            document.getElementById('dataMonitor').style.display = this.monitorVisible ? 'block' : 'none';
+            
+            if (this.monitorVisible) {
+                this.updateDisplay();
+            }
+        },
+        
+        resetSession: function() {
+            this.sessionBytes = 0;
+            this.updateDisplay();
+        }
+    };
     </script>
+
+    <div id="dataMonitor" style="display: none; position: fixed; bottom: 100px; right: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 1000; max-width: 300px;">
+    <h3 style="margin-top: 0; color: #333;">Data Usage Monitor</h3>
+    <div id="dataStats">
+        <p>Total data received: <span id="totalData">0 KB</span></p>
+        <p>Current session: <span id="sessionData">0 KB</span></p>
+    </div>
+    <button onclick="firebaseMonitor.toggleDetailedView()" style="margin-top: 10px; padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 4px;">Close</button>
 </body>
 </html>
