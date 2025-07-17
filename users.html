@@ -1012,67 +1012,72 @@
             }
         }
 
-       async function sendQuestion() {
-        const questionInput = document.getElementById('questionInput');
-        const questionText = questionInput.value.trim();
-        const messageDiv = document.getElementById('questionMessage');
-        
-        if (!questionText) {
-            messageDiv.innerHTML = '<div class="error-message">Proszę wpisać pytanie</div>';
-            return;
-        }
-        
-        if (selectedRecipients.length === 0) {
-            messageDiv.innerHTML = '<div class="error-message">Wybierz przynajmniej jednego odbiorcę</div>';
-            return;
-        }
+       // Send question to multiple recipients
+function sendQuestion() {
+    const questionInput = document.getElementById('questionInput');
+    const questionText = questionInput.value.trim();
+    const messageDiv = document.getElementById('questionMessage');
     
-        const sendBtn = document.querySelector('#questionSection button');
-        sendBtn.disabled = true;
-        sendBtn.textContent = 'Wysyłanie...';
+    // Validate input
+    if (!questionText) {
+        messageDiv.innerHTML = '<div class="error-message">Proszę wpisać pytanie</div>';
+        return;
+    }
     
-        try {
-            const updates = {};
-            const questionData = {
-                text: questionText,
-                timestamp: new Date().toLocaleString(),
-                from: currentUserId,
-                mode: settings.mode || 'open_both'
-            };
-    
-            // Get current counts for all recipients in one operation
-            const countersSnapshot = await firebase.database()
-                .ref('questionCounters')
-                .once('value');
-            const counters = countersSnapshot.val() || {};
-    
-            // Prepare all updates
-            selectedRecipients.forEach(recipientId => {
-                const currentCount = counters[recipientId] || 0;
-                const newIndex = currentCount;
-                updates[`questions/${recipientId}/${newIndex}`] = questionData;
-                updates[`questionCounters/${recipientId}`] = currentCount + 1;
-            });
-    
-            // Execute all updates atomically
-            await firebase.database().ref().update(updates);
-    
-            // Clear form
+    if (selectedRecipients.length === 0) {
+        messageDiv.innerHTML = '<div class="error-message">Wybierz przynajmniej jednego odbiorcę</div>';
+        return;
+    }
+
+    // Disable send button during operation
+    const sendBtn = document.querySelector('#questionSection button');
+    const originalBtnText = sendBtn.textContent;
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Wysyłanie...';
+
+    try {
+        // Create question data
+        const questionData = {
+            text: questionText,
+            timestamp: new Date().toLocaleString(),
+            from: currentUserId,
+            mode: settings.mode || 'open_both'
+        };
+
+        // Add question to each recipient's array
+        selectedRecipients.forEach(recipientId => {
+            if (!questions[recipientId]) {
+                questions[recipientId] = [];
+            }
+            questions[recipientId].push(questionData);
+        });
+
+        // Save to Firebase
+        saveDataToFirebase().then(() => {
+            // Clear form on success
             questionInput.value = '';
             selectedRecipients = [];
             updateSelectedRecipientsDisplay();
-    
+
+            // Show success message
             messageDiv.innerHTML = '<div class="success-message">Pytanie zostało wysłane pomyślnie!</div>';
-            setTimeout(() => messageDiv.innerHTML = '', 3000);
-    
-        } catch (error) {
-            console.error('Error sending question:', error);
-            messageDiv.innerHTML = `<div class="error-message">Błąd podczas wysyłania: ${error.message}</div>`;
-        } finally {
-            sendBtn.disabled = false;
-            sendBtn.textContent = 'Wyślij Pytanie';
-        }
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 3000);
+        }).catch(error => {
+            console.error('Error saving question:', error);
+            messageDiv.innerHTML = '<div class="error-message">Błąd podczas wysyłania pytania</div>';
+        });
+
+    } catch (error) {
+        console.error('Error:', error);
+        messageDiv.innerHTML = '<div class="error-message">Wystąpił nieoczekiwany błąd</div>';
+    } finally {
+        // Re-enable send button
+        sendBtn.disabled = false;
+        sendBtn.textContent = originalBtnText;
     }
+}
 
         async function saveDataToFirebase() {
             if (!db) {
