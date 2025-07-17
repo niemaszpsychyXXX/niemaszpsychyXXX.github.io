@@ -408,146 +408,173 @@
             margin-bottom: 15px;
         }
         
+        /* Multi-select dropdown styles */
         .recipients-container {
-    margin-top: 15px;
-    position: relative;
-}
-
-.recipient-filter {
-    position: relative;
-}
-
-.filter-letters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 10px;
-    margin-bottom: 10px;
-}
-
-.filter-letter {
-    padding: 5px 10px;
-    background: #f0f0f0;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.3s ease;
-}
-
-.filter-letter:hover {
-    background: var(--secondary-color);
-    color: white;
-}
-
-.filter-letter.active {
-    background: var(--secondary-color);
-    color: white;
-}
-
-.recipients-list {
-    display: none; /* Hidden by default */
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 100;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    
-    /* 4-column grid layout */
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-    padding: 15px;
-}
-
-.recipients-list.open {
-    display: grid; /* Show when open */
-}
-
-.recipient-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    font-size: 14px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.recipient-checkbox:hover {
-    background-color: #f5f5f5;
-}
-
-.recipient-checkbox input[type="checkbox"] {
-    margin: 0;
-    cursor: pointer;
-}
-
-.recipient-checkbox span {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Toggle button for recipients list */
-.recipients-toggle {
-    width: 100%;
-    padding: 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    background: white;
-    cursor: pointer;
-    font-size: 16px;
-    text-align: left;
-    transition: all 0.3s ease;
-    margin-top: 10px;
-}
-
-.recipients-toggle:hover {
-    border-color: var(--secondary-color);
-}
-
-.recipients-toggle:focus {
-    outline: none;
-    border-color: var(--secondary-color);
-    box-shadow: 0 0 0 3px var(--focus-shadow);
-}
-
-.recipients-toggle::after {
-    content: '▼';
-    float: right;
-    transition: transform 0.3s ease;
-}
-
-.recipients-toggle.open::after {
-    transform: rotate(180deg);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .recipients-list {
-        grid-template-columns: repeat(2, 1fr); /* 2 columns on mobile */
-    }
-    
-    .filter-letters {
-        justify-content: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .recipients-list {
-        grid-template-columns: 1fr; /* 1 column on very small screens */
-    }
-}
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        .recipient-dropdown {
+            position: relative;
+            width: 100%;
+        }
+        
+        .dropdown-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .dropdown-toggle:hover {
+            border-color: var(--secondary-color);
+        }
+        
+        .dropdown-toggle:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px var(--focus-shadow);
+        }
+        
+        .dropdown-toggle.active {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            border-color: var(--secondary-color);
+        }
+        
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: white;
+            border: 2px solid var(--secondary-color);
+            border-top: none;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            z-index: 100;
+            display: none;
+        }
+        
+        .dropdown-menu.active {
+            display: block;
+        }
+        
+        .search-recipients {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .search-recipients input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .recipient-options {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            padding: 10px;
+        }
+        
+        .recipient-option {
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .recipient-option:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .recipient-option input {
+            margin-right: 8px;
+        }
+        
+        .selected-recipients {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .recipient-tag {
+            background: var(--secondary-color);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .remove-recipient {
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        /* Push content down when dropdown is open */
+        .dropdown-open {
+            margin-top: 310px; /* Height of dropdown + some margin */
+            transition: margin-top 0.3s ease;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 10px;
+            }
+            
+            h1 {
+                font-size: 2em;
+                margin-bottom: 30px;
+            }
+            
+            .section, .user-section {
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .section h2, .user-section h2 {
+                font-size: 1.5em;
+            }
+            
+            .recipient-options {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .dropdown-menu {
+                max-height: 200px;
+            }
+            
+            .dropdown-open {
+                margin-top: 210px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .recipient-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .dropdown-open {
+                margin-top: 310px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -560,19 +587,25 @@
                 <p id="userInfo">To twój interfejs do zadawania pytań</p>
             </div>
             
-            <div class="section">
+            <div class="section" id="questionSection">
                 <h2>Wyślij Pytanie</h2>
+                <div class="recipients-container">
+                    <div class="recipient-dropdown">
+                        <div class="dropdown-toggle" id="dropdownToggle">
+                            <span>Wybierz odbiorców</span>
+                            <span>▼</span>
+                        </div>
+                        <div class="dropdown-menu" id="dropdownMenu">
+                            <div class="search-recipients">
+                                <input type="text" id="recipientSearch" placeholder="Wyszukaj odbiorców...">
+                            </div>
+                            <div class="recipient-options" id="recipientOptions"></div>
+                        </div>
+                    </div>
+                    <div class="selected-recipients" id="selectedRecipients"></div>
+                </div>
                 <div class="input-group">
                     <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
-                </div>
-                
-                <div class="recipients-container">
-                    <div class="recipient-filter">
-                        <input type="text" id="recipientSearch" placeholder="Wyszukaj odbiorców..." class="recipient-select" style="display: none;">
-                        <div class="filter-letters" id="filterLetters" style="display: none;"></div>
-                    </div>
-                    <div class="recipients-list" id="recipientsList"></div>
-                    <div class="selected-recipients" id="selectedRecipients"></div>
                 </div>
                 <button onclick="sendQuestion()">Wyślij Pytanie</button>
                 <div id="questionMessage"></div>
@@ -691,132 +724,126 @@
             updateReceivedQuestions();
         }
         
-        function populateRecipientSelect() {
-    const recipientsList = document.getElementById('recipientsList');
-    const filterLetters = document.getElementById('filterLetters');
-    recipientsList.innerHTML = '';
-    
-    if (!currentUserId || users.length === 0) return;
-    
-    // Create alphabet filter
-    const alphabet = 'AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ'.split('');
-    filterLetters.innerHTML = '';
-    
-    // Add "All" filter first
-    const allBtn = document.createElement('div');
-    allBtn.className = 'filter-letter active';
-    allBtn.textContent = 'WSZYSTKIE';
-    allBtn.onclick = () => filterByLetter('');
-    filterLetters.appendChild(allBtn);
-    
-    alphabet.forEach(letter => {
-        const letterBtn = document.createElement('div');
-        letterBtn.className = 'filter-letter';
-        letterBtn.textContent = letter;
-        letterBtn.onclick = () => filterByLetter(letter);
-        filterLetters.appendChild(letterBtn);
-    });
-    
-    // Create toggle button
-    const toggleBtn = document.createElement('button');
-    toggleBtn.className = 'recipients-toggle';
-    toggleBtn.type = 'button';
-    toggleBtn.innerHTML = 'Wybierz odbiorców <span id="selectedCount">(0 wybranych)</span>';
-    toggleBtn.onclick = () => toggleRecipientsList();
-    
-    // Insert toggle button before recipients list
-    recipientsList.parentNode.insertBefore(toggleBtn, recipientsList);
-    
-    // Sort users alphabetically
-    const availableRecipients = users
-        .filter(user => user.id !== currentUserId)
-        .sort((a, b) => {
-            const nameA = a.name.toUpperCase();
-            const nameB = b.name.toUpperCase();
-            return nameA.localeCompare(nameB, 'pl');
-        });
-    
-    // Create checkbox list
-    availableRecipients.forEach(user => {
-        const recipientItem = document.createElement('label');
-        recipientItem.className = 'recipient-checkbox';
-        
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = user.id;
-        checkbox.onchange = () => updateSelectedRecipients();
-        
-        const userLabel = document.createElement('span');
-        userLabel.textContent = `${user.name}`;
-        userLabel.title = `${user.name} (${user.threadsNick || 'brak nicku'})`;
-        
-        recipientItem.appendChild(checkbox);
-        recipientItem.appendChild(userLabel);
-        recipientsList.appendChild(recipientItem);
-    });
-    
-    // Update search functionality
-    document.getElementById('recipientSearch').addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        const items = recipientsList.querySelectorAll('.recipient-checkbox');
-        
-        items.forEach(item => {
-            const text = item.textContent.toLowerCase();
-            item.style.display = text.includes(searchTerm) ? 'flex' : 'none';
-        });
-    });
-}
-        
-        function toggleRecipientsList() {
-    const recipientsList = document.getElementById('recipientsList');
-    const toggleBtn = document.querySelector('.recipients-toggle');
-    
-    recipientsList.classList.toggle('open');
-    toggleBtn.classList.toggle('open');
-    
-    // Update search focus
-    if (recipientsList.classList.contains('open')) {
-        setTimeout(() => {
-            document.getElementById('recipientSearch').focus();
-        }, 100);
-    }
-}
-        
-        function updateSelectedRecipients() {
-    const checkboxes = document.querySelectorAll('#recipientsList input[type="checkbox"]:checked');
-    const selectedContainer = document.getElementById('selectedRecipients');
-    const selectedCount = document.getElementById('selectedCount');
-    
-    selectedRecipients = Array.from(checkboxes).map(checkbox => checkbox.value);
-    
-    // Update count in toggle button
-    if (selectedCount) {
-        selectedCount.textContent = `(${selectedRecipients.length} wybranych)`;
-    }
-    
-    selectedContainer.innerHTML = '';
-    
-    selectedRecipients.forEach(recipientId => {
-        const user = users.find(u => u.id === recipientId);
-        if (user) {
-            const tag = document.createElement('div');
-            tag.className = 'recipient-tag';
-            tag.innerHTML = `
-                ${user.name}
-                <span class="remove-recipient" onclick="removeRecipient('${recipientId}')">×</span>
-            `;
-            selectedContainer.appendChild(tag);
+        function populateRecipientDropdown() {
+            const recipientOptions = document.getElementById('recipientOptions');
+            recipientOptions.innerHTML = '';
+            
+            if (!currentUserId || users.length === 0) return;
+            
+            // Sort users alphabetically
+            const availableRecipients = users
+                .filter(user => user.id !== currentUserId)
+                .sort((a, b) => {
+                    const nameA = a.name.toUpperCase();
+                    const nameB = b.name.toUpperCase();
+                    return nameA.localeCompare(nameB, 'pl');
+                });
+            
+            // Create checkbox options
+            availableRecipients.forEach(user => {
+                const option = document.createElement('div');
+                option.className = 'recipient-option';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `recipient-${user.id}`;
+                checkbox.value = user.id;
+                checkbox.checked = selectedRecipients.includes(user.id);
+                checkbox.onchange = () => toggleRecipient(user.id);
+                
+                const label = document.createElement('label');
+                label.htmlFor = `recipient-${user.id}`;
+                label.textContent = `${user.name} (${user.threadsNick || 'brak nicku'})`;
+                
+                option.appendChild(checkbox);
+                option.appendChild(label);
+                recipientOptions.appendChild(option);
+            });
+            
+            // Setup search functionality
+            document.getElementById('recipientSearch').addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                const options = recipientOptions.querySelectorAll('.recipient-option');
+                
+                options.forEach(option => {
+                    const text = option.textContent.toLowerCase();
+                    option.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+                });
+            });
+            
+            // Setup dropdown toggle
+            const dropdownToggle = document.getElementById('dropdownToggle');
+            const dropdownMenu = document.getElementById('dropdownMenu');
+            const questionSection = document.getElementById('questionSection');
+            
+            dropdownToggle.addEventListener('click', function() {
+                this.classList.toggle('active');
+                dropdownMenu.classList.toggle('active');
+                
+                if (dropdownMenu.classList.contains('active')) {
+                    questionSection.classList.add('dropdown-open');
+                    document.getElementById('recipientSearch').focus();
+                } else {
+                    questionSection.classList.remove('dropdown-open');
+                }
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!dropdownToggle.contains(event.target) && !dropdownMenu.contains(event.target)) {
+                    dropdownToggle.classList.remove('active');
+                    dropdownMenu.classList.remove('active');
+                    questionSection.classList.remove('dropdown-open');
+                }
+            });
         }
-    });
-}
-
-function removeRecipient(recipientId) {
-    const checkbox = document.querySelector(`#recipientsList input[value="${recipientId}"]`);
-    if (checkbox) {
-        checkbox.checked = false;
-        updateSelectedRecipients();
-    }
-}
+        
+        function toggleRecipient(recipientId) {
+            const index = selectedRecipients.indexOf(recipientId);
+            if (index === -1) {
+                selectedRecipients.push(recipientId);
+            } else {
+                selectedRecipients.splice(index, 1);
+            }
+            updateSelectedRecipientsDisplay();
+        }
+        
+        function updateSelectedRecipientsDisplay() {
+            const selectedContainer = document.getElementById('selectedRecipients');
+            selectedContainer.innerHTML = '';
+            
+            if (selectedRecipients.length === 0) {
+                document.getElementById('dropdownToggle').querySelector('span').textContent = 'Wybierz odbiorców';
+                return;
+            }
+            
+            document.getElementById('dropdownToggle').querySelector('span').textContent = `Wybrano: ${selectedRecipients.length}`;
+            
+            selectedRecipients.forEach(recipientId => {
+                const user = users.find(u => u.id === recipientId);
+                if (user) {
+                    const tag = document.createElement('div');
+                    tag.className = 'recipient-tag';
+                    tag.innerHTML = `
+                        ${user.name}
+                        <span class="remove-recipient" onclick="removeRecipient('${recipientId}')">×</span>
+                    `;
+                    selectedContainer.appendChild(tag);
+                }
+            });
+        }
+        
+        function removeRecipient(recipientId) {
+            const index = selectedRecipients.indexOf(recipientId);
+            if (index !== -1) {
+                selectedRecipients.splice(index, 1);
+                const checkbox = document.getElementById(`recipient-${recipientId}`);
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+                updateSelectedRecipientsDisplay();
+            }
+        }
 
         function preloadTheme() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -974,7 +1001,7 @@ function removeRecipient(recipientId) {
             
             document.getElementById('userWelcome').textContent = `Witaj, ${user.name}!`;
             
-            populateRecipientSelect();
+            populateRecipientDropdown();
             updateReceivedQuestions();
             updateAskedQuestions();
             
