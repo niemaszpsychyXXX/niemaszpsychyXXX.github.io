@@ -701,222 +701,212 @@
             }
         }
 
-        function updateReceivedQuestions() {
-            const focusedElement = document.activeElement;
-            let focusedIndex = null;
-            if (focusedElement && focusedElement.id.startsWith('answer-')) {
-                focusedIndex = focusedElement.id.replace('answer-', '');
-            }
-                
-            const receivedQuestionsDiv = document.getElementById('receivedQuestions');
-            const userQuestions = questions[currentUserId] || [];
-            
-            if (userQuestions.length === 0) {
-                receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
-                return;
-            }
-            
-            const questionsWithIndices = userQuestions.map((question, originalIndex) => ({
-                ...question,
-                originalIndex: originalIndex
-            }));
-            
-            questionsWithIndices.sort((a, b) => {
-                const dateA = new Date(a.timestamp);
-                const dateB = new Date(b.timestamp);
-                return dateB - dateA;
-            });
-            
-            const currentFormStates = {};
-            questionsWithIndices.forEach((question, displayIndex) => {
-                const answerTextarea = document.getElementById(`answer-${displayIndex}`);
-                const secretCheckbox = document.getElementById(`secret-${displayIndex}`);
-                
-                if (answerTextarea) {
-                    currentFormStates[displayIndex] = {
-                        text: answerTextarea.value,
-                        secret: secretCheckbox ? secretCheckbox.checked : false
-                    };
-                }
-            });
-            
-            receivedQuestionsDiv.innerHTML = '';
-            questionsWithIndices.forEach((question, displayIndex) => {
-                const fromUser = users.find(u => u.id === question.from);
-                const questionItem = document.createElement('div');
-                questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
-                
-                let answerSection = '';
-                if (question.answer) {
-                    answerSection = `
-                        <div class="answer-section">
-                            <div class="answer-item">
-                                <div class="answer-header">
-                                    <span class="answer-author">Ty</span>
-                                    <span class="answer-time">${question.answer.timestamp}</span>
-                                </div>
-                                <div class="answer-content">${question.answer.text}</div>
-                                ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Sekret)</div>' : ''}
-                            </div>
+        // Replace the updateReceivedQuestions function with this fixed version:
+function updateReceivedQuestions() {
+    const focusedElement = document.activeElement;
+    let focusedOriginalIndex = null;
+    if (focusedElement && focusedElement.dataset.originalIndex) {
+        focusedOriginalIndex = focusedElement.dataset.originalIndex;
+    }
+        
+    const receivedQuestionsDiv = document.getElementById('receivedQuestions');
+    const userQuestions = questions[currentUserId] || [];
+    
+    if (userQuestions.length === 0) {
+        receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
+        return;
+    }
+    
+    // Create array with original indices preserved
+    const questionsWithIndices = userQuestions.map((question, originalIndex) => ({
+        ...question,
+        originalIndex: originalIndex
+    }));
+    
+    // Sort by timestamp (newest first)
+    questionsWithIndices.sort((a, b) => {
+        const dateA = new Date(a.timestamp);
+        const dateB = new Date(b.timestamp);
+        return dateB - dateA;
+    });
+    
+    // Store current form states using original indices
+    const currentFormStates = {};
+    questionsWithIndices.forEach((question) => {
+        const answerTextarea = document.querySelector(`[data-original-index="${question.originalIndex}"]`);
+        const secretCheckbox = document.querySelector(`[data-original-index="${question.originalIndex}"][type="checkbox"]`);
+        
+        if (answerTextarea && answerTextarea.tagName === 'TEXTAREA') {
+            currentFormStates[question.originalIndex] = {
+                text: answerTextarea.value,
+                secret: secretCheckbox ? secretCheckbox.checked : false
+            };
+        }
+    });
+    
+    receivedQuestionsDiv.innerHTML = '';
+    questionsWithIndices.forEach((question, displayIndex) => {
+        const fromUser = users.find(u => u.id === question.from);
+        const questionItem = document.createElement('div');
+        questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
+        
+        let answerSection = '';
+        if (question.answer) {
+            answerSection = `
+                <div class="answer-section">
+                    <div class="answer-item">
+                        <div class="answer-header">
+                            <span class="answer-author">Ty</span>
+                            <span class="answer-time">${question.answer.timestamp}</span>
                         </div>
-                    `;
-                } else {
-                    answerSection = `
-                        <div class="answer-form">
-                            <textarea class="answer-textarea" id="answer-${displayIndex}" placeholder="Napisz odpowiedź..."></textarea>
-                            <div style="margin-bottom: 5px;">
-                                <input type="checkbox" id="secret-${displayIndex}">
-                                <label for="secret-${displayIndex}">👀 SEKRET 👀</label>
-                            </div>
-                            <button class="answer-btn" onclick="sendAnswer(${displayIndex})">Wyślij odpowiedź</button>
-                        </div>
-                    `;
-                }
-                
-                questionItem.innerHTML = `
-                    <div class="question-header">
-                        <span class="question-author">${fromUser ? fromUser.name : 'Nieznany użytkownik'}</span>
-                        <span class="question-time">${question.timestamp}</span>
+                        <div class="answer-content">${question.answer.text}</div>
+                        ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Sekret)</div>' : ''}
                     </div>
-                    <div class="question-content">${question.text}</div>
-                    ${answerSection}
-                `;
-                receivedQuestionsDiv.prepend(questionItem);
-                
-                if (currentFormStates[displayIndex] && !question.answer) {
-                    const answerTextarea = document.getElementById(`answer-${displayIndex}`);
-                    const secretCheckbox = document.getElementById(`secret-${displayIndex}`);
-                    
-                    if (answerTextarea) {
-                        answerTextarea.value = currentFormStates[displayIndex].text;
-                    }
-                    if (secretCheckbox) {
-                        secretCheckbox.checked = currentFormStates[displayIndex].secret;
-                    }
-                }
-            });
-
-            if (focusedIndex !== null) {
-                const newTextarea = document.getElementById(`answer-${focusedIndex}`);
-                if (newTextarea) {
-                    newTextarea.focus();
-                    newTextarea.selectionStart = focusedElement.selectionStart;
-                    newTextarea.selectionEnd = focusedElement.selectionEnd;
-                }
-            }
-        }
-
-        function sendAnswer(displayIndex) {
-            try
-            {
-                const textarea = document.getElementById(`answer-${displayIndex}`);
-                const checkbox = document.getElementById(`secret-${displayIndex}`);
-                
-                if (!textarea || !textarea.value.trim()) {
-                    alert('Proszę wpisać odpowiedź');
-                    return;
-                }
-            
-                // Get the original index from the sorted array
-                const userQuestions = questions[currentUserId] || [];
-                const questionsWithIndices = userQuestions.map((q, i) => ({...q, originalIndex: i}))
-                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                
-                if (displayIndex >= questionsWithIndices.length) {
-                    alert('Nie znaleziono pytania');
-                    return;
-                }
-            
-                const originalIndex = questionsWithIndices[displayIndex].originalIndex;
-                
-                questions[currentUserId][originalIndex].answer = {
-                    text: textarea.value.trim(),
-                    timestamp: new Date().toLocaleString(),
-                    secret: checkbox ? checkbox.checked : false,
-                    mode: settings.mode || 'open_both'
-                };
-                
-                saveDataToFirebase();
-                updateReceivedQuestions();
-            } catch (error) {
-                console.error('Error sending answer:', error);
-                showMessage('error', 'Wystąpił błąd podczas wysyłania odpowiedzi');
-            }
-        }
-
-        function updateAskedQuestions() {
-            const askedQuestionsDiv = document.getElementById('askedQuestions');
-            
-            const userQuestions = [];
-            Object.keys(questions).forEach(targetUserId => {
-                const targetQuestions = questions[targetUserId] || [];
-                targetQuestions.forEach(question => {
-                    if (question.from === currentUserId) {
-                        const targetUser = users.find(u => u.id === targetUserId);
-                        userQuestions.push({
-                            ...question,
-                            targetUser: targetUser,
-                            askedTo: targetUserId
-                        });
-                    }
-                });
-            });
-            
-            if (userQuestions.length === 0) {
-                askedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>';
-                return;
-            }
-            
-            userQuestions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            
-            askedQuestionsDiv.innerHTML = '';
-            userQuestions.forEach(question => {
-                const questionItem = document.createElement('div');
-                questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
-                
-                let answerSection = '';
-                if (question.answer) {
-                    if (question.answer.secret) {
-                        answerSection = `
-                            <div class="answer-section">
-                                <div class="answer-item">
-                                    <div class="answer-header">
-                                        <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
-                                        <span class="answer-time">${question.answer.timestamp}</span>
-                                    </div>
-                                    <div class="answer-content">${question.answer.text}</div>
-                                    <div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        answerSection = `
-                            <div class="answer-section">
-                                <div class="answer-item">
-                                    <div class="answer-header">
-                                        <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
-                                        <span class="answer-time">${question.answer.timestamp}</span>
-                                    </div>
-                                    <div class="answer-content">${question.answer.text}</div>
-                                </div>
-                            </div>
-                        `;
-                    }
-                } else {
-                    answerSection = '<div class="answer-section" style="color: #888;">(Brak odpowiedzi)</div>';
-                }
-                
-                questionItem.innerHTML = `
-                    <div class="question-header">
-                        <span class="question-author">Ty</span>
-                        <span class="question-time">${question.timestamp}</span>
+                </div>
+            `;
+        } else {
+            answerSection = `
+                <div class="answer-form">
+                    <textarea class="answer-textarea" data-original-index="${question.originalIndex}" placeholder="Napisz odpowiedź..."></textarea>
+                    <div style="margin-bottom: 5px;">
+                        <input type="checkbox" data-original-index="${question.originalIndex}">
+                        <label>👀 SEKRET 👀</label>
                     </div>
-                    <div class="question-content">${question.text}</div>
-                    ${answerSection}
-                `;
-                askedQuestionsDiv.appendChild(questionItem);
-            });
+                    <button class="answer-btn" onclick="sendAnswer(${question.originalIndex})">Wyślij odpowiedź</button>
+                </div>
+            `;
         }
+        
+        questionItem.innerHTML = `
+            <div class="question-header">
+                <span class="question-author">${fromUser ? fromUser.name : 'Nieznany użytkownik'}</span>
+                <span class="question-time">${question.timestamp}</span>
+            </div>
+            <div class="question-content">${question.text}</div>
+            ${answerSection}
+        `;
+        receivedQuestionsDiv.prepend(questionItem);
+        
+        // Restore form states using original indices
+        if (currentFormStates[question.originalIndex] && !question.answer) {
+            const answerTextarea = document.querySelector(`[data-original-index="${question.originalIndex}"]`);
+            const secretCheckbox = document.querySelector(`[data-original-index="${question.originalIndex}"][type="checkbox"]`);
+            
+            if (answerTextarea && answerTextarea.tagName === 'TEXTAREA') {
+                answerTextarea.value = currentFormStates[question.originalIndex].text;
+            }
+            if (secretCheckbox) {
+                secretCheckbox.checked = currentFormStates[question.originalIndex].secret;
+            }
+        }
+    });
+
+    // Restore focus using original index
+    if (focusedOriginalIndex !== null) {
+        const newTextarea = document.querySelector(`[data-original-index="${focusedOriginalIndex}"]`);
+        if (newTextarea && newTextarea.tagName === 'TEXTAREA') {
+            newTextarea.focus();
+            if (focusedElement.selectionStart !== undefined) {
+                newTextarea.selectionStart = focusedElement.selectionStart;
+                newTextarea.selectionEnd = focusedElement.selectionEnd;
+            }
+        }
+    }
+}
+        // Replace the sendAnswer function with this fixed version:
+function sendAnswer(originalIndex) {
+    try {
+        const textarea = document.querySelector(`[data-original-index="${originalIndex}"]`);
+        const checkbox = document.querySelector(`[data-original-index="${originalIndex}"][type="checkbox"]`);
+        
+        if (!textarea || !textarea.value.trim()) {
+            alert('Proszę wpisać odpowiedź');
+            return;
+        }
+        
+        // Validate that the question exists and doesn't already have an answer
+        if (!questions[currentUserId] || !questions[currentUserId][originalIndex]) {
+            alert('Nie znaleziono pytania');
+            return;
+        }
+        
+        if (questions[currentUserId][originalIndex].answer) {
+            alert('To pytanie już ma odpowiedź');
+            return;
+        }
+        
+        // Create a deep copy to avoid reference issues
+        const updatedQuestions = JSON.parse(JSON.stringify(questions));
+        
+        // Add the answer to the specific question
+        updatedQuestions[currentUserId][originalIndex].answer = {
+            text: textarea.value.trim(),
+            timestamp: new Date().toLocaleString(),
+            secret: checkbox ? checkbox.checked : false,
+            mode: settings.mode || 'open_both'
+        };
+        
+        // Update the global questions object
+        questions = updatedQuestions;
+        
+        // Save to Firebase
+        saveDataToFirebase();
+        
+        // Update UI
+        updateReceivedQuestions();
+        
+    } catch (error) {
+        console.error('Error sending answer:', error);
+        showMessage('error', 'Wystąpił błąd podczas wysyłania odpowiedzi: ' + error.message);
+    }
+}
+
+        // Enhanced saveDataToFirebase function with better error handling:
+async function saveDataToFirebase() {
+    if (!db) {
+        console.error('Database not initialized');
+        showMessage('error', 'Błąd: Baza danych nie jest zainicjalizowana');
+        return;
+    }
+
+    try {
+        // Create a clean copy of data without any undefined values
+        const cleanData = {
+            users: users || [],
+            questions: questions || {},
+            settings: settings || { mode: 'open_both' },
+            lastUpdated: new Date().toISOString()
+        };
+        
+        // Validate questions structure
+        Object.keys(cleanData.questions).forEach(userId => {
+            if (!Array.isArray(cleanData.questions[userId])) {
+                console.warn(`Invalid questions array for user ${userId}`);
+                cleanData.questions[userId] = [];
+            }
+        });
+        
+        await firebase.database().ref('/').update(cleanData);
+        console.log('Data saved successfully to Firebase');
+        
+    } catch (error) {
+        console.error('Error saving to Firebase:', error);
+        showMessage('error', 'Błąd zapisu do bazy danych: ' + error.message);
+        
+        // Attempt to reload data from Firebase to sync
+        try {
+            const snapshot = await firebase.database().ref('/').once('value');
+            const data = snapshot.val() || {};
+            questions = data.questions || {};
+            users = data.users || [];
+            settings = data.settings || { mode: 'open_both' };
+            updateUI();
+            console.log('Data reloaded from Firebase after save error');
+        } catch (reloadError) {
+            console.error('Error reloading data:', reloadError);
+        }
+    }
+}
         
         document.addEventListener('DOMContentLoaded', function() {
             preloadTheme();
