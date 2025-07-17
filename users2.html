@@ -459,7 +459,6 @@
 
 // Function to create and manage data info display
 function createDataInfoDisplay() {
-    // Create info div if it doesn't exist
     let infoDiv = document.getElementById('dataInfo');
     if (!infoDiv) {
         infoDiv = document.createElement('div');
@@ -480,6 +479,43 @@ function createDataInfoDisplay() {
         `;
         document.body.appendChild(infoDiv);
     }
+    
+    const formatBytes = (bytes) => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+    
+    const questionsCount = Object.values(questions).reduce((total, arr) => total + (arr?.length || 0), 0);
+    const usersCount = users.length;
+    const assignmentsCount = Object.keys(assignments).length;
+    
+    infoDiv.innerHTML = `
+        <strong>📊 Data Info</strong><br>
+        Downloaded: <span style="color: #4CAF50">${formatBytes(totalDataDownloaded)}</span><br>
+        Questions: <span style="color: #2196F3">${questionsCount}</span><br>
+        Users: <span style="color: #FF9800">${usersCount}</span><br>
+        Assignments: <span style="color: #9C27B0">${assignmentsCount}</span>
+    `;
+    
+    return {
+        updateSize: (dataSize) => {
+            totalDataDownloaded += dataSize;
+            createDataInfoDisplay();
+        },
+        trackFirebaseData: (data) => {
+            if (data === null || data === undefined) return 0;
+            const dataStr = JSON.stringify(data);
+            const dataSize = new Blob([dataStr]).size;
+            totalDataDownloaded += dataSize;
+            createDataInfoDisplay();
+            console.log(`Data tracked: ${dataSize} bytes`); // Debug log
+            return dataSize;
+        }
+    };
+}
     
     // Update display
     const formatBytes = (bytes) => {
@@ -584,23 +620,23 @@ const dataTracker = createDataInfoDisplay();
             });
         }
 
-        async function loadAllUsersForSelection() {
-            try {
-                const snapshot = await firebase.database().ref('users').once('value');
-                const allUsers = snapshot.val() || [];
-                
-                // Merge with existing users, avoiding duplicates
-                allUsers.forEach(user => {
-                    if (!users.find(u => u.id === user.id)) {
-                        users.push(user);
-                    }
-                });
-                
-                populateRecipientSelect();
-            } catch (error) {
-                console.error('Error loading all users:', error);
+        // Fix 4: Track data in loadAllUsersForSelection
+async function loadAllUsersForSelection() {
+    try {
+        const snapshot = await firebase.database().ref('users').once('value');
+        const allUsers = snapshot.val() || [];
+        dataTracker.trackFirebaseData(allUsers); // ADD THIS LINE
+        
+        allUsers.forEach(user => {
+            if (!users.find(u => u.id === user.id)) {
+                users.push(user);
             }
-        }
+        });
+        
+        populateRecipientSelect();
+    } catch (error) {
+        console.error('Error loading all users:', error);
+    }
         
         function preloadTheme() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -677,98 +713,100 @@ const dataTracker = createDataInfoDisplay();
             }
         }
 
-        // Modified setupUserSpecificListeners function
-        function setupUserSpecificListeners(userId) {
-            // Listen only to questions FOR this user
-            firebase.database().ref(`questions/${userId}`).on('value', (snapshot) => {
-                questions[userId] = snapshot.val() || [];
-                updateReceivedQuestions();
-            });
-            
-            // Listen only to this user's assignment
-            firebase.database().ref(`assignments/${userId}`).on('value', (snapshot) => {
-                assignments[userId] = snapshot.val();
-                updateUI();
-            });
-            
-            // Listen only to this user's data
-            firebase.database().ref(`users/${userId}`).on('value', (snapshot) => {
-                const userData = snapshot.val();
-                if (userData) {
-                    // Update or add this user to the local users array
-                    const userIndex = users.findIndex(u => u.id === userId);
-                    if (userIndex >= 0) {
-                        users[userIndex] = {...users[userIndex], ...userData};
-                    } else {
-                        users.push({id: userId, ...userData});
-                    }
-                    applyTheme(userData);
-                    updateUI();
-                }
-            });
-            
-            // Listen to questions asked BY this user (across all target users)
-            firebase.database().ref('questions').on('value', (snapshot) => {
-                const allQuestions = snapshot.val() || {};
-                
-                // Clear existing questions asked by this user
-                Object.keys(questions).forEach(targetUserId => {
-                    if (targetUserId !== userId) {
-                        delete questions[targetUserId];
-                    }
-                });
-                
-                // Only load questions where this user is the sender
-                Object.keys(allQuestions).forEach(targetUserId => {
-                    const targetQuestions = allQuestions[targetUserId] || [];
-                    const userQuestions = targetQuestions.filter(q => q && q.from === userId);
-                    
-                    if (userQuestions.length > 0) {
-                        questions[targetUserId] = targetQuestions; // Store full array to maintain indices
-                        
-                        // Load target user data if not already loaded
-                        loadUserData(targetUserId);
-                    }
-                });
-                
-                updateAskedQuestions();
-            });
-            
-            // Listen to settings
-            firebase.database().ref('settings').on('value', (snapshot) => {
-                settings = snapshot.val() || { mode: 'open_both' };
-            });
-            
-            // Load initial data only for this user
-            loadInitialUserData(userId);
+        // Fix 1: Add data tracking to Firebase listeners
+function setupUserSpecificListeners(userId) {
+    // Listen only to questions FOR this user
+    firebase.database().ref(`questions/${userId}`).on('value', (snapshot) => {
+        const data = snapshot.val() || [];
+        dataTracker.trackFirebaseData(data); // ADD THIS LINE
+        questions[userId] = data;
+        updateReceivedQuestions();
+    });
+    
+    // Listen only to this user's assignment
+    firebase.database().ref(`assignments/${userId}`).on('value', (snapshot) => {
+        const data = snapshot.val();
+        dataTracker.trackFirebaseData(data); // ADD THIS LINE
+        assignments[userId] = data;
+        updateUI();
+    });
+    
+    // Listen only to this user's data
+    firebase.database().ref(`users/${userId}`).on('value', (snapshot) => {
+        const userData = snapshot.val();
+        if (userData) {
+            dataTracker.trackFirebaseData(userData); // ADD THIS LINE
+            const userIndex = users.findIndex(u => u.id === userId);
+            if (userIndex >= 0) {
+                users[userIndex] = {...users[userIndex], ...userData};
+            } else {
+                users.push({id: userId, ...userData});
+            }
+            applyTheme(userData);
+            updateUI();
         }
+    });
+    
+    // Listen to questions asked BY this user
+    firebase.database().ref('questions').on('value', (snapshot) => {
+        const allQuestions = snapshot.val() || {};
+        dataTracker.trackFirebaseData(allQuestions); // ADD THIS LINE
+        
+        Object.keys(questions).forEach(targetUserId => {
+            if (targetUserId !== userId) {
+                delete questions[targetUserId];
+            }
+        });
+        
+        Object.keys(allQuestions).forEach(targetUserId => {
+            const targetQuestions = allQuestions[targetUserId] || [];
+            const userQuestions = targetQuestions.filter(q => q && q.from === userId);
+            
+            if (userQuestions.length > 0) {
+                questions[targetUserId] = targetQuestions;
+                loadUserData(targetUserId);
+            }
+        });
+        
+        updateAskedQuestions();
+    });
+    
+    // Listen to settings
+    firebase.database().ref('settings').on('value', (snapshot) => {
+        const data = snapshot.val() || { mode: 'open_both' };
+        dataTracker.trackFirebaseData(data); // ADD THIS LINE
+        settings = data;
+    });
+    
+    loadInitialUserData(userId);
+}
 
         // Modified function to load only essential initial data
+// Fix 2: Track data in loadInitialUserData
 async function loadInitialUserData(userId) {
     try {
-        // Load only the current user's assignment
         const assignmentSnapshot = await firebase.database().ref(`assignments/${userId}`).once('value');
         const userAssignment = assignmentSnapshot.val();
         if (userAssignment) {
+            dataTracker.trackFirebaseData(userAssignment); // ADD THIS LINE
             assignments[userId] = userAssignment;
-            // Load the assigned user's data
             await loadUserData(userAssignment);
         }
         
-        // Load all users for recipient selection (this could be optimized further if needed)
         const usersSnapshot = await firebase.database().ref('users').once('value');
         const allUsers = usersSnapshot.val() || [];
+        dataTracker.trackFirebaseData(allUsers); // ADD THIS LINE
         
-        // Only store users that are relevant (current user + assigned users)
         users = allUsers.filter(user => {
-            return user.id === userId || // Current user
-                   userAssignment === user.id || // Assigned to current user
-                   assignments[userId] === user.id; // Current user assigned to them
+            return user.id === userId || 
+                   userAssignment === user.id || 
+                   assignments[userId] === user.id;
         });
         
-        // Load settings
         const settingsSnapshot = await firebase.database().ref('settings').once('value');
-        settings = settingsSnapshot.val() || { mode: 'open_both' };
+        const settingsData = settingsSnapshot.val() || { mode: 'open_both' };
+        dataTracker.trackFirebaseData(settingsData); // ADD THIS LINE
+        settings = settingsData;
         
         updateUI();
     } catch (error) {
@@ -776,25 +814,27 @@ async function loadInitialUserData(userId) {
         showMessage('error', 'Błąd ładowania danych: ' + error.message);
     }
 }
+
         
         // New function to load specific user data when needed
-        async function loadUserData(userId) {
-            if (users.find(u => u.id === userId)) {
-                return; // Already loaded
-            }
-            
-            try {
-                const snapshot = await firebase.database().ref(`users/${userId}`).once('value');
-                const userData = snapshot.val();
-                if (userData) {
-                    users.push({id: userId, ...userData});
-                    updateUI(); // Refresh UI to show new user data
-                }
-            } catch (error) {
-                console.error('Error loading user data:', error);
-            }
+        // Fix 3: Track data in loadUserData
+async function loadUserData(userId) {
+    if (users.find(u => u.id === userId)) {
+        return;
+    }
+    
+    try {
+        const snapshot = await firebase.database().ref(`users/${userId}`).once('value');
+        const userData = snapshot.val();
+        if (userData) {
+            dataTracker.trackFirebaseData(userData); // ADD THIS LINE
+            users.push({id: userId, ...userData});
+            updateUI();
         }
-
+    } catch (error) {
+        console.error('Error loading user data:', error);
+    }
+}
         function showMessage(type, text) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `${type}-message`;
