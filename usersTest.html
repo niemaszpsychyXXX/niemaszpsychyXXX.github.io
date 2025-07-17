@@ -330,45 +330,6 @@
             display: none;
         }
         
-        .recipient-controls {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        
-        .recipient-select {
-            flex: 1;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-        
-        .recipient-select:focus {
-            outline: none;
-            border-color: var(--secondary-color);
-            box-shadow: 0 0 0 3px var(--focus-shadow);
-        }
-        
-        .change-recipient-btn {
-            background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        
-        .change-recipient-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px var(--hover-shadow);
-        }
-
         /* Modal styles */
         .modal-overlay {
             position: fixed;
@@ -447,9 +408,95 @@
             margin-bottom: 15px;
         }
         
-        /* Multi-select styles */
+        /* Multi-select dropdown styles */
         .recipients-container {
-            margin-top: 15px;
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        .recipient-dropdown {
+            position: relative;
+            width: 100%;
+        }
+        
+        .dropdown-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .dropdown-toggle:hover {
+            border-color: var(--secondary-color);
+        }
+        
+        .dropdown-toggle:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px var(--focus-shadow);
+        }
+        
+        .dropdown-toggle.active {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            border-color: var(--secondary-color);
+        }
+        
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: white;
+            border: 2px solid var(--secondary-color);
+            border-top: none;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            z-index: 100;
+            display: none;
+        }
+        
+        .dropdown-menu.active {
+            display: block;
+        }
+        
+        .search-recipients {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .search-recipients input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .recipient-options {
+            padding: 5px 0;
+        }
+        
+        .recipient-option {
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .recipient-option:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .recipient-option input {
+            margin-right: 10px;
         }
         
         .selected-recipients {
@@ -494,17 +541,8 @@
                 font-size: 1.5em;
             }
             
-            .recipient-controls {
-                flex-direction: column;
-            }
-            
-            .change-recipient-btn {
-                width: 100%;
-            }
-
-            .modal-content {
-                width: 95%;
-                padding: 20px;
+            .dropdown-menu {
+                max-height: 200px;
             }
         }
     </style>
@@ -519,22 +557,29 @@
                 <p id="userInfo">To twój interfejs do zadawania pytań</p>
             </div>
             
-             <div class="section">
-        <h2>Wyślij Pytanie</h2>
-        <div class="input-group">
-            <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
-        </div>
-        <div class="recipients-container">
-            <div class="recipient-filter">
-                <input type="text" id="recipientSearch" placeholder="Wyszukaj odbiorców..." class="recipient-select">
-                <div class="filter-letters" id="filterLetters"></div>
+            <div class="section">
+                <h2>Wyślij Pytanie</h2>
+                <div class="input-group">
+                    <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
+                </div>
+                <div class="recipients-container">
+                    <div class="recipient-dropdown">
+                        <div class="dropdown-toggle" id="dropdownToggle">
+                            <span>Wybierz odbiorców</span>
+                            <span>▼</span>
+                        </div>
+                        <div class="dropdown-menu" id="dropdownMenu">
+                            <div class="search-recipients">
+                                <input type="text" id="recipientSearch" placeholder="Wyszukaj odbiorców...">
+                            </div>
+                            <div class="recipient-options" id="recipientOptions"></div>
+                        </div>
+                    </div>
+                    <div class="selected-recipients" id="selectedRecipients"></div>
+                </div>
+                <button onclick="sendQuestion()">Wyślij Pytanie</button>
+                <div id="questionMessage"></div>
             </div>
-            <div class="recipients-list" id="recipientsList"></div>
-            <div class="selected-recipients" id="selectedRecipients"></div>
-        </div>
-        <button onclick="sendQuestion()">Wyślij Pytanie</button>
-        <div id="questionMessage"></div>
-    </div>
             
             <div class="user-section">
                 <h2>Pytania dla Ciebie</h2>
@@ -649,31 +694,11 @@
             updateReceivedQuestions();
         }
         
-         function populateRecipientSelect() {
-            const recipientsList = document.getElementById('recipientsList');
-            const filterLetters = document.getElementById('filterLetters');
-            recipientsList.innerHTML = '';
+        function populateRecipientDropdown() {
+            const recipientOptions = document.getElementById('recipientOptions');
+            recipientOptions.innerHTML = '';
             
             if (!currentUserId || users.length === 0) return;
-            
-            // Create alphabet filter
-            const alphabet = 'AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ'.split('');
-            filterLetters.innerHTML = '';
-            
-            alphabet.forEach(letter => {
-                const letterBtn = document.createElement('div');
-                letterBtn.className = 'filter-letter';
-                letterBtn.textContent = letter;
-                letterBtn.onclick = () => filterByLetter(letter);
-                filterLetters.appendChild(letterBtn);
-            });
-            
-            // Add "All" filter
-            const allBtn = document.createElement('div');
-            allBtn.className = 'filter-letter active';
-            allBtn.textContent = 'WSZYSTKIE';
-            allBtn.onclick = () => filterByLetter('');
-            filterLetters.appendChild(allBtn);
             
             // Sort users alphabetically
             const availableRecipients = users
@@ -684,63 +709,80 @@
                     return nameA.localeCompare(nameB, 'pl');
                 });
             
-            // Create checkbox list
+            // Create checkbox options
             availableRecipients.forEach(user => {
-                const recipientItem = document.createElement('label');
-                recipientItem.className = 'recipient-checkbox';
+                const option = document.createElement('div');
+                option.className = 'recipient-option';
                 
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
+                checkbox.id = `recipient-${user.id}`;
                 checkbox.value = user.id;
-                checkbox.onchange = () => updateSelectedRecipients();
+                checkbox.checked = selectedRecipients.includes(user.id);
+                checkbox.onchange = () => toggleRecipient(user.id);
                 
-                const userLabel = document.createElement('span');
-                userLabel.textContent = `${user.name} (${user.threadsNick || 'brak nicku'})`;
+                const label = document.createElement('label');
+                label.htmlFor = `recipient-${user.id}`;
+                label.textContent = `${user.name} (${user.threadsNick || 'brak nicku'})`;
                 
-                recipientItem.appendChild(checkbox);
-                recipientItem.appendChild(userLabel);
-                recipientsList.appendChild(recipientItem);
+                option.appendChild(checkbox);
+                option.appendChild(label);
+                recipientOptions.appendChild(option);
             });
             
-            // Add search functionality
+            // Setup search functionality
             document.getElementById('recipientSearch').addEventListener('input', function() {
                 const searchTerm = this.value.toLowerCase();
-                const items = recipientsList.querySelectorAll('.recipient-checkbox');
+                const options = recipientOptions.querySelectorAll('.recipient-option');
                 
-                items.forEach(item => {
-                    const text = item.textContent.toLowerCase();
-                    item.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+                options.forEach(option => {
+                    const text = option.textContent.toLowerCase();
+                    option.style.display = text.includes(searchTerm) ? 'flex' : 'none';
                 });
             });
-        }
-
-         function filterByLetter(letter) {
-            const items = document.querySelectorAll('.filter-letter');
-            items.forEach(item => item.classList.remove('active'));
             
-            if (letter === '') {
-                document.querySelectorAll('.recipient-checkbox').forEach(item => {
-                    item.style.display = 'flex';
-                });
-                items[items.length - 1].classList.add('active'); // "All" button
+            // Setup dropdown toggle
+            const dropdownToggle = document.getElementById('dropdownToggle');
+            const dropdownMenu = document.getElementById('dropdownMenu');
+            
+            dropdownToggle.addEventListener('click', function() {
+                this.classList.toggle('active');
+                dropdownMenu.classList.toggle('active');
+                
+                if (dropdownMenu.classList.contains('active')) {
+                    document.getElementById('recipientSearch').focus();
+                }
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!dropdownToggle.contains(event.target) && !dropdownMenu.contains(event.target)) {
+                    dropdownToggle.classList.remove('active');
+                    dropdownMenu.classList.remove('active');
+                }
+            });
+        }
+        
+        function toggleRecipient(recipientId) {
+            const index = selectedRecipients.indexOf(recipientId);
+            if (index === -1) {
+                selectedRecipients.push(recipientId);
+            } else {
+                selectedRecipients.splice(index, 1);
+            }
+            updateSelectedRecipientsDisplay();
+        }
+        
+        function updateSelectedRecipientsDisplay() {
+            const selectedContainer = document.getElementById('selectedRecipients');
+            selectedContainer.innerHTML = '';
+            
+            if (selectedRecipients.length === 0) {
+                document.getElementById('dropdownToggle').querySelector('span').textContent = 'Wybierz odbiorców';
                 return;
             }
             
-            document.querySelectorAll('.recipient-checkbox').forEach(item => {
-                const firstLetter = item.textContent.trim().charAt(0).toUpperCase();
-                item.style.display = firstLetter === letter ? 'flex' : 'none';
-            });
-            
-            // Activate the clicked letter button
-            Array.from(items).find(item => item.textContent === letter)?.classList.add('active');
-        }
-        
-        function updateSelectedRecipients() {
-            const checkboxes = document.querySelectorAll('#recipientsList input[type="checkbox"]:checked');
-            const selectedContainer = document.getElementById('selectedRecipients');
-            selectedRecipients = Array.from(checkboxes).map(checkbox => checkbox.value);
-            
-            selectedContainer.innerHTML = '';
+            document.getElementById('dropdownToggle').querySelector('span').textContent = `Wybrano: ${selectedRecipients.length}`;
             
             selectedRecipients.forEach(recipientId => {
                 const user = users.find(u => u.id === recipientId);
@@ -757,10 +799,14 @@
         }
         
         function removeRecipient(recipientId) {
-            const checkbox = document.querySelector(`#recipientsList input[value="${recipientId}"]`);
-            if (checkbox) {
-                checkbox.checked = false;
-                updateSelectedRecipients();
+            const index = selectedRecipients.indexOf(recipientId);
+            if (index !== -1) {
+                selectedRecipients.splice(index, 1);
+                const checkbox = document.getElementById(`recipient-${recipientId}`);
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+                updateSelectedRecipientsDisplay();
             }
         }
 
@@ -920,7 +966,7 @@
             
             document.getElementById('userWelcome').textContent = `Witaj, ${user.name}!`;
             
-            populateRecipientSelect();
+            populateRecipientDropdown();
             updateReceivedQuestions();
             updateAskedQuestions();
             
@@ -961,6 +1007,8 @@
             });
             
             questionInput.value = '';
+            selectedRecipients = [];
+            updateSelectedRecipientsDisplay();
             messageDiv.innerHTML = '<div class="success-message">Pytanie zostało wysłane pomyślnie!</div>';
             
             setTimeout(() => {
@@ -1127,7 +1175,6 @@
             preloadTheme();
             initFirebase();
         });
-
     </script>
 </body>
 </html>
