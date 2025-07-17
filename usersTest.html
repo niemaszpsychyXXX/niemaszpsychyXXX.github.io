@@ -565,19 +565,13 @@
                 <div class="input-group">
                     <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
                 </div>
+                
                 <div class="recipients-container">
-                    <div class="recipient-dropdown">
-                        <div class="dropdown-toggle" id="dropdownToggle">
-                            <span>Wybierz odbiorców</span>
-                            <span>▼</span>
-                        </div>
-                        <div class="dropdown-menu" id="dropdownMenu">
-                            <div class="search-recipients">
-                                <input type="text" id="recipientSearch" placeholder="Wyszukaj odbiorców...">
-                            </div>
-                            <div class="recipient-options" id="recipientOptions"></div>
-                        </div>
+                    <div class="recipient-filter">
+                        <input type="text" id="recipientSearch" placeholder="Wyszukaj odbiorców..." class="recipient-select" style="display: none;">
+                        <div class="filter-letters" id="filterLetters" style="display: none;"></div>
                     </div>
+                    <div class="recipients-list" id="recipientsList"></div>
                     <div class="selected-recipients" id="selectedRecipients"></div>
                 </div>
                 <button onclick="sendQuestion()">Wyślij Pytanie</button>
@@ -980,7 +974,7 @@ function removeRecipient(recipientId) {
             
             document.getElementById('userWelcome').textContent = `Witaj, ${user.name}!`;
             
-            populateRecipientDropdown();
+            populateRecipientSelect();
             updateReceivedQuestions();
             updateAskedQuestions();
             
