@@ -890,15 +890,15 @@
                 alert('Najpierw połącz się z Firebase');
                 return;
             }
-        
+            
             try {
-                await firebase.database().ref('/').set({
-                    users: users,
-                    assignments: assignments,
-                    questions: questions,
-                    settings: settings,
-                    lastUpdated: new Date().toISOString()
-                });
+                // Instead of saving everything, only update what's necessary
+                await firebase.database().ref('questions').set(questions);
+                await firebase.database().ref('assignments').set(assignments);
+                await firebase.database().ref('settings').set(settings);
+                
+                // Update lastUpdated timestamp
+                await firebase.database().ref('lastUpdated').set(new Date().toISOString());
             } catch (error) {
                 console.error('Błąd zapisu do Firebase:', error);
                 showMessage('error', 'Błąd zapisu: ' + error.message);
