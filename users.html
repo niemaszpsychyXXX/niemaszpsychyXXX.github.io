@@ -768,7 +768,7 @@
                                 <input type="checkbox" id="secret-${displayIndex}">
                                 <label for="secret-${displayIndex}">👀 SEKRET 👀</label>
                             </div>
-                            <button class="answer-btn" onclick="sendAnswer(${question.originalIndex})">Wyślij odpowiedź</button>
+                            <button class="answer-btn" onclick="sendAnswer(${displayIndex})">Wyślij odpowiedź</button>
                         </div>
                     `;
                 }
@@ -806,44 +806,42 @@
             }
         }
 
-        function sendAnswer(questionIndex) {
-            const allTextareas = document.querySelectorAll('textarea[id^="answer-"]');
-            const allCheckboxes = document.querySelectorAll('input[id^="secret-"]');
-            
-            let answerText = '';
-            let isSecret = false;
-            
-            for (let textarea of allTextareas) {
-                if (textarea.value.trim()) {
-                    answerText = textarea.value.trim();
-                    const textareaIndex = textarea.id.replace('answer-', '');
-                    const checkbox = document.getElementById(`secret-${textareaIndex}`);
-                    if (checkbox) {
-                        isSecret = checkbox.checked;
-                    }
-                    break;
+        function sendAnswer(displayIndex) {
+            try
+            {
+                const textarea = document.getElementById(`answer-${displayIndex}`);
+                const checkbox = document.getElementById(`secret-${displayIndex}`);
+                
+                if (!textarea || !textarea.value.trim()) {
+                    alert('Proszę wpisać odpowiedź');
+                    return;
                 }
+            
+                // Get the original index from the sorted array
+                const userQuestions = questions[currentUserId] || [];
+                const questionsWithIndices = userQuestions.map((q, i) => ({...q, originalIndex: i}))
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                if (displayIndex >= questionsWithIndices.length) {
+                    alert('Nie znaleziono pytania');
+                    return;
+                }
+            
+                const originalIndex = questionsWithIndices[displayIndex].originalIndex;
+                
+                questions[currentUserId][originalIndex].answer = {
+                    text: textarea.value.trim(),
+                    timestamp: new Date().toLocaleString(),
+                    secret: checkbox ? checkbox.checked : false,
+                    mode: settings.mode || 'open_both'
+                };
+                
+                saveDataToFirebase();
+                updateReceivedQuestions();
+            } catch (error) {
+                console.error('Error sending answer:', error);
+                showMessage('error', 'Wystąpił błąd podczas wysyłania odpowiedzi');
             }
-            
-            if (!answerText) {
-                alert('Proszę wpisać odpowiedź');
-                return;
-            }
-            
-            if (!questions[currentUserId] || !questions[currentUserId][questionIndex]) {
-                alert('Nie znaleziono pytania');
-                return;
-            }
-            
-            questions[currentUserId][questionIndex].answer = {
-                text: answerText,
-                timestamp: new Date().toLocaleString(),
-                secret: isSecret,
-                mode: settings.mode || 'open_both'
-            };
-            
-            saveDataToFirebase();
-            updateReceivedQuestions();
         }
 
         function updateAskedQuestions() {
