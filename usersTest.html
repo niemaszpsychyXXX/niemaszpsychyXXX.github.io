@@ -447,6 +447,34 @@
             margin-bottom: 15px;
         }
         
+        /* Multi-select styles */
+        .recipients-container {
+            margin-top: 15px;
+        }
+        
+        .selected-recipients {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .recipient-tag {
+            background: var(--secondary-color);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .remove-recipient {
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
         @media (max-width: 768px) {
             body {
                 padding: 20px 10px;
@@ -493,17 +521,16 @@
             
             <div class="section">
                 <h2>Wyślij Pytanie</h2>
-                <p id="assignmentInfo"></p>
                 <div class="input-group">
                     <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
                 </div>
-                <button onclick="sendQuestion()">Wyślij Pytanie</button>
-                <div class="recipient-controls">
-                    <select id="recipientSelect" class="recipient-select">
-                        <option value="">Wybierz odbiorcę...</option>
+                <div class="recipients-container">
+                    <select id="recipientSelect" class="recipient-select" multiple>
+                        <option value="">Wybierz odbiorców...</option>
                     </select>
-                    <button class="change-recipient-btn" onclick="saveRecipient()">Zmień odbiorcę</button>
+                    <div class="selected-recipients" id="selectedRecipients"></div>
                 </div>
+                <button onclick="sendQuestion()">Wyślij Pytanie</button>
                 <div id="questionMessage"></div>
             </div>
             
@@ -552,11 +579,11 @@
         let app = null;
         let db = null;
         let users = [];
-        let assignments = {};
         let questions = {};
         let currentUserId = null;
         let settings = { mode: 'open_both' };
         let currentAnsweringQuestionIndex = null;
+        let selectedRecipients = [];
         
         // Firebase configuration
         const firebaseConfig = {
@@ -620,37 +647,9 @@
             updateReceivedQuestions();
         }
         
-        // Save recipient function
-        async function saveRecipient() {
-            if (!currentUserId) {
-                showMessage('error', 'Najpierw załaduj swój profil');
-                return;
-            }
-            
-            const select = document.getElementById('recipientSelect');
-            const selectedValue = select.value;
-            
-            if (!selectedValue) {
-                showMessage('error', 'Wybierz odbiorcę');
-                return;
-            }
-            
-            try {
-                assignments[currentUserId] = selectedValue;
-                await firebase.database().ref('/assignments').set(assignments);
-                const recipientUser = users.find(u => u.id === selectedValue);
-                const recipientName = recipientUser ? recipientUser.name : 'Nieznany użytkownik';
-                updateUI();
-                showMessage('success', `Odbiorca zmieniony na: ${recipientName}`);
-            } catch (error) {
-                console.error('Błąd zmiany odbiorcy:', error);
-                showMessage('error', 'Błąd zmiany odbiorcy: ' + error.message);
-            }
-        }
-        
         function populateRecipientSelect() {
             const select = document.getElementById('recipientSelect');
-            select.innerHTML = '<option value="">Wybierz odbiorcę...</option>';
+            select.innerHTML = '<option value="">Wybierz odbiorców...</option>';
             
             if (!currentUserId || users.length === 0) return;
             
@@ -660,13 +659,52 @@
                 const option = document.createElement('option');
                 option.value = user.id;
                 option.textContent = `${user.name} (${user.threadsNick || 'brak nicku'})`;
-                if (assignments[currentUserId] === user.id) {
-                    option.selected = true;
-                }
                 select.appendChild(option);
+            });
+            
+            // Add event listener for multi-select
+            select.addEventListener('change', function() {
+                updateSelectedRecipients();
             });
         }
         
+        function updateSelectedRecipients() {
+            const select = document.getElementById('recipientSelect');
+            const selectedContainer = document.getElementById('selectedRecipients');
+            selectedRecipients = Array.from(select.selectedOptions)
+                .filter(option => option.value !== "")
+                .map(option => option.value);
+            
+            selectedContainer.innerHTML = '';
+            
+            selectedRecipients.forEach(recipientId => {
+                const user = users.find(u => u.id === recipientId);
+                if (user) {
+                    const tag = document.createElement('div');
+                    tag.className = 'recipient-tag';
+                    tag.innerHTML = `
+                        ${user.name}
+                        <span class="remove-recipient" onclick="removeRecipient('${recipientId}')">×</span>
+                    `;
+                    selectedContainer.appendChild(tag);
+                }
+            });
+        }
+        
+        function removeRecipient(recipientId) {
+            const select = document.getElementById('recipientSelect');
+            selectedRecipients = selectedRecipients.filter(id => id !== recipientId);
+            
+            // Update select options
+            Array.from(select.options).forEach(option => {
+                if (option.value === recipientId) {
+                    option.selected = false;
+                }
+            });
+            
+            updateSelectedRecipients();
+        }
+
         function preloadTheme() {
             const urlParams = new URLSearchParams(window.location.search);
             let userId = urlParams.get('user');
@@ -761,11 +799,6 @@
                 });
             });
             
-            firebase.database().ref(`assignments/${userId}`).on('value', (snapshot) => {
-                assignments[userId] = snapshot.val();
-                updateUI();
-            });
-            
             firebase.database().ref(`users/${userId}`).on('value', (snapshot) => {
                 const userData = snapshot.val();
                 if (userData) {
@@ -787,7 +820,6 @@
             firebase.database().ref().once('value').then((snapshot) => {
                 const data = snapshot.val() || {};
                 users = data.users || [];
-                assignments = data.assignments || {};
                 questions = data.questions || {};
                 settings = data.settings || { mode: 'open_both' };
                 updateUI();
@@ -826,15 +858,8 @@
             
             applyTheme(user);
             currentUserId = userId;
-            const assignedUser = users.find(u => u.id === assignments[userId]);
             
             document.getElementById('userWelcome').textContent = `Witaj, ${user.name}!`;
-            
-            if (assignedUser) {
-                document.getElementById('assignmentInfo').textContent = `Wyślij pytanie do ${assignedUser.name} (${assignedUser.threadsNick}):`;
-            } else {
-                document.getElementById('assignmentInfo').textContent = 'Brak dostępnego przydziału';
-            }
             
             populateRecipientSelect();
             updateReceivedQuestions();
@@ -857,22 +882,23 @@
                 return;
             }
             
-            if (!assignments[currentUserId]) {
-                messageDiv.innerHTML = '<div class="error-message">Brak dostępnego przydziału</div>';
+            if (selectedRecipients.length === 0) {
+                messageDiv.innerHTML = '<div class="error-message">Wybierz przynajmniej jednego odbiorcę</div>';
                 return;
             }
             
-            const targetUserId = assignments[currentUserId];
-            
-            if (!questions[targetUserId]) {
-                questions[targetUserId] = [];
-            }
-            
-            questions[targetUserId].push({
-                text: questionText,
-                timestamp: new Date().toLocaleString(),
-                from: currentUserId,
-                mode: settings.mode || 'open_both'
+            // Send question to each selected recipient
+            selectedRecipients.forEach(recipientId => {
+                if (!questions[recipientId]) {
+                    questions[recipientId] = [];
+                }
+                
+                questions[recipientId].push({
+                    text: questionText,
+                    timestamp: new Date().toLocaleString(),
+                    from: currentUserId,
+                    mode: settings.mode || 'open_both'
+                });
             });
             
             questionInput.value = '';
@@ -894,7 +920,6 @@
             try {
                 // Instead of saving everything, only update what's necessary
                 await firebase.database().ref('questions').set(questions);
-                await firebase.database().ref('assignments').set(assignments);
                 await firebase.database().ref('settings').set(settings);
                 
                 // Update lastUpdated timestamp
