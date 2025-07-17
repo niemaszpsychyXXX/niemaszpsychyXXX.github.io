@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -411,16 +410,15 @@
             
             <div class="section">
                 <h2>Wyślij Pytanie</h2>
-                <p id="assignmentInfo"></p>
+                <p id="assignmentInfo">Wybierz odbiorcę i wyślij pytanie:</p>
                 <div class="input-group">
                     <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
                 </div>
-                <button onclick="sendQuestion()">Wyślij Pytanie</button>
                 <div class="recipient-controls">
                     <select id="recipientSelect" class="recipient-select">
                         <option value="">Wybierz odbiorcę...</option>
                     </select>
-                    <button class="change-recipient-btn" onclick="saveRecipient()">Zmień odbiorcę</button>
+                    <button onclick="sendQuestion()">Wyślij Pytanie</button>
                 </div>
                 <div id="questionMessage"></div>
             </div>
@@ -446,79 +444,12 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script>
         // Global variables
-        // Global variables - simplified to only store user-specific data
         let app = null;
         let db = null;
-        let users = []; // Only store users needed for display
-        let assignments = {};
-        let questions = {}; // Only store questions relevant to current user
+        let users = [];
+        let questions = {};
         let currentUserId = null;
-        let settings = {};
-
-        let totalDataDownloaded = 0; // Track downloaded data size
-
-// Function to create and manage data info display
-function createDataInfoDisplay() {
-    // Create info div if it doesn't exist
-    let infoDiv = document.getElementById('dataInfo');
-    if (!infoDiv) {
-        infoDiv = document.createElement('div');
-        infoDiv.id = 'dataInfo';
-        infoDiv.style.cssText = `
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-            z-index: 1000;
-            max-width: 300px;
-            backdrop-filter: blur(5px);
-        `;
-        document.body.appendChild(infoDiv);
-    }
-    
-    // Update display
-    const formatBytes = (bytes) => {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    };
-    
-    const questionsCount = Object.values(questions).reduce((total, arr) => total + (arr?.length || 0), 0);
-    const usersCount = users.length;
-    const assignmentsCount = Object.keys(assignments).length;
-    
-    infoDiv.innerHTML = `
-        <strong>📊 Data Info</strong><br>
-        Downloaded: <span style="color: #4CAF50">${formatBytes(totalDataDownloaded)}</span><br>
-        Questions: <span style="color: #2196F3">${questionsCount}</span><br>
-        Users: <span style="color: #FF9800">${usersCount}</span><br>
-        Assignments: <span style="color: #9C27B0">${assignmentsCount}</span>
-    `;
-    
-    return {
-        updateSize: (dataSize) => {
-            totalDataDownloaded += dataSize;
-            createDataInfoDisplay(); // Refresh display
-        },
-        trackFirebaseData: (data) => {
-            const dataStr = JSON.stringify(data);
-            const dataSize = new Blob([dataStr]).size;
-            totalDataDownloaded += dataSize;
-            createDataInfoDisplay(); // Refresh display
-            return dataSize;
-        }
-    };
-}
-
-// Initialize data tracker
-const dataTracker = createDataInfoDisplay();
+        let settings = { mode: 'open_both' };
         
         // Firebase configuration
         const firebaseConfig = {
@@ -530,46 +461,11 @@ const dataTracker = createDataInfoDisplay();
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
 
-        // Save recipient function
-        async function saveRecipient() {
-            if (!currentUserId) {
-                showMessage('error', 'Najpierw załaduj swój profil');
-                return;
-            }
-            
-            const select = document.getElementById('recipientSelect');
-            const selectedValue = select.value;
-            
-            if (!selectedValue) {
-                showMessage('error', 'Wybierz odbiorcę');
-                return;
-            }
-            
-            try {
-                assignments[currentUserId] = selectedValue;
-                await firebase.database().ref('/assignments').set(assignments);
-                const recipientUser = users.find(u => u.id === selectedValue);
-                const recipientName = recipientUser ? recipientUser.name : 'Nieznany użytkownik';
-                updateUI();
-                showMessage('success', `Odbiorca zmieniony na: ${recipientName}`);
-            } catch (error) {
-                console.error('Błąd zmiany odbiorcy:', error);
-                showMessage('error', 'Błąd zmiany odbiorcy: ' + error.message);
-            }
-        }
-        
-        // Modified populateRecipientSelect to handle limited user data
         function populateRecipientSelect() {
             const select = document.getElementById('recipientSelect');
             select.innerHTML = '<option value="">Wybierz odbiorcę...</option>';
             
-            if (!currentUserId) return;
-            
-            // If we don't have all users loaded, load them for the dropdown
-            if (users.length <= 2) { // Only current user and maybe assigned user
-                loadAllUsersForSelection();
-                return;
-            }
+            if (!currentUserId || users.length === 0) return;
             
             const availableRecipients = users.filter(user => user.id !== currentUserId);
             
@@ -577,32 +473,9 @@ const dataTracker = createDataInfoDisplay();
                 const option = document.createElement('option');
                 option.value = user.id;
                 option.textContent = `${user.name} (${user.threadsNick || 'brak nicku'})`;
-                if (assignments[currentUserId] === user.id) {
-                    option.selected = true;
-                }
                 select.appendChild(option);
             });
         }
-
-        // Modified loadAllUsersForSelection function with data tracking
-async function loadAllUsersForSelection() {
-    try {
-        const snapshot = await firebase.database().ref('users').once('value');
-        const allUsers = snapshot.val() || [];
-        dataTracker.trackFirebaseData(allUsers); // Add this line
-        
-        // Merge with existing users, avoiding duplicates
-        allUsers.forEach(user => {
-            if (!users.find(u => u.id === user.id)) {
-                users.push(user);
-            }
-        });
-        
-        populateRecipientSelect();
-    } catch (error) {
-        console.error('Error loading all users:', error);
-    }
-}
         
         function preloadTheme() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -679,137 +552,51 @@ async function loadAllUsersForSelection() {
             }
         }
 
-        // Modified setupUserSpecificListeners function with data tracking
-function setupUserSpecificListeners(userId) {
-    // Listen only to questions FOR this user
-    firebase.database().ref(`questions/${userId}`).on('value', (snapshot) => {
-        const data = snapshot.val() || [];
-        dataTracker.trackFirebaseData(data); // Add this line
-        questions[userId] = data;
-        updateReceivedQuestions();
-    });
-    
-    // Listen only to this user's assignment
-    firebase.database().ref(`assignments/${userId}`).on('value', (snapshot) => {
-        const data = snapshot.val();
-        dataTracker.trackFirebaseData(data); // Add this line
-        assignments[userId] = data;
-        updateUI();
-    });
-    
-    // Listen only to this user's data
-    firebase.database().ref(`users/${userId}`).on('value', (snapshot) => {
-        const userData = snapshot.val();
-        if (userData) {
-            dataTracker.trackFirebaseData(userData); // Add this line
-            // Update or add this user to the local users array
-            const userIndex = users.findIndex(u => u.id === userId);
-            if (userIndex >= 0) {
-                users[userIndex] = {...users[userIndex], ...userData};
-            } else {
-                users.push({id: userId, ...userData});
-            }
-            applyTheme(userData);
-            updateUI();
-        }
-    });
-    
-    // Listen to questions asked BY this user (across all target users)
-    firebase.database().ref('questions').on('value', (snapshot) => {
-        const allQuestions = snapshot.val() || {};
-        dataTracker.trackFirebaseData(allQuestions); // Add this line
-        
-        // Clear existing questions asked by this user
-        Object.keys(questions).forEach(targetUserId => {
-            if (targetUserId !== userId) {
-                delete questions[targetUserId];
-            }
-        });
-        
-        // Only load questions where this user is the sender
-        Object.keys(allQuestions).forEach(targetUserId => {
-            const targetQuestions = allQuestions[targetUserId] || [];
-            const userQuestions = targetQuestions.filter(q => q && q.from === userId);
+        function setupUserSpecificListeners(userId) {
+            firebase.database().ref(`questions/${userId}`).on('value', (snapshot) => {
+                questions[userId] = snapshot.val() || [];
+                updateReceivedQuestions();
+            });
             
-            if (userQuestions.length > 0) {
-                questions[targetUserId] = targetQuestions; // Store full array to maintain indices
+            firebase.database().ref('questions').on('child_added', (questionsSnapshot) => {
+                const targetUserId = questionsSnapshot.key;
+                const targetQuestions = questionsSnapshot.val() || [];
                 
-                // Load target user data if not already loaded
-                loadUserData(targetUserId);
-            }
-        });
-        
-        updateAskedQuestions();
-    });
-    
-    // Listen to settings
-    firebase.database().ref('settings').on('value', (snapshot) => {
-        const data = snapshot.val() || { mode: 'open_both' };
-        dataTracker.trackFirebaseData(data); // Add this line
-        settings = data;
-    });
-    
-    // Load initial data only for this user
-    loadInitialUserData(userId);
-}
-        // Modified function to load only essential initial data
-// Modified loadInitialUserData function with data tracking
-async function loadInitialUserData(userId) {
-    try {
-        // Load only the current user's assignment
-        const assignmentSnapshot = await firebase.database().ref(`assignments/${userId}`).once('value');
-        const userAssignment = assignmentSnapshot.val();
-        if (userAssignment) {
-            dataTracker.trackFirebaseData(userAssignment); // Add this line
-            assignments[userId] = userAssignment;
-            // Load the assigned user's data
-            await loadUserData(userAssignment);
+                targetQuestions.forEach((question, index) => {
+                    if (question.from === userId) {
+                        if (!questions[targetUserId]) questions[targetUserId] = [];
+                        questions[targetUserId][index] = question;
+                        updateAskedQuestions();
+                    }
+                });
+            });
+            
+            firebase.database().ref(`users/${userId}`).on('value', (snapshot) => {
+                const userData = snapshot.val();
+                if (userData) {
+                    const userIndex = users.findIndex(u => u.id === userId);
+                    if (userIndex >= 0) {
+                        users[userIndex] = {...users[userIndex], ...userData};
+                    } else {
+                        users.push({id: userId, ...userData});
+                    }
+                    applyTheme(userData);
+                    updateUI();
+                }
+            });
+            
+            firebase.database().ref('settings').on('value', (snapshot) => {
+                settings = snapshot.val() || { mode: 'open_both' };
+            });
+            
+            firebase.database().ref().once('value').then((snapshot) => {
+                const data = snapshot.val() || {};
+                users = data.users || [];
+                questions = data.questions || {};
+                settings = data.settings || { mode: 'open_both' };
+                updateUI();
+            });
         }
-        
-        // Load all users for recipient selection (this could be optimized further if needed)
-        const usersSnapshot = await firebase.database().ref('users').once('value');
-        const allUsers = usersSnapshot.val() || [];
-        dataTracker.trackFirebaseData(allUsers); // Add this line
-        
-        // Only store users that are relevant (current user + assigned users)
-        users = allUsers.filter(user => {
-            return user.id === userId || // Current user
-                   userAssignment === user.id || // Assigned to current user
-                   assignments[userId] === user.id; // Current user assigned to them
-        });
-        
-        // Load settings
-        const settingsSnapshot = await firebase.database().ref('settings').once('value');
-        const settingsData = settingsSnapshot.val() || { mode: 'open_both' };
-        dataTracker.trackFirebaseData(settingsData); // Add this line
-        settings = settingsData;
-        
-        updateUI();
-    } catch (error) {
-        console.error('Error loading initial data:', error);
-        showMessage('error', 'Błąd ładowania danych: ' + error.message);
-    }
-}
-        
-        // New function to load specific user data when needed
-        // Modified loadUserData function with data tracking
-async function loadUserData(userId) {
-    if (users.find(u => u.id === userId)) {
-        return; // Already loaded
-    }
-    
-    try {
-        const snapshot = await firebase.database().ref(`users/${userId}`).once('value');
-        const userData = snapshot.val();
-        if (userData) {
-            dataTracker.trackFirebaseData(userData); // Add this line
-            users.push({id: userId, ...userData});
-            updateUI(); // Refresh UI to show new user data
-        }
-    } catch (error) {
-        console.error('Error loading user data:', error);
-    }
-}
 
         function showMessage(type, text) {
             const messageDiv = document.createElement('div');
@@ -843,15 +630,8 @@ async function loadUserData(userId) {
             
             applyTheme(user);
             currentUserId = userId;
-            const assignedUser = users.find(u => u.id === assignments[userId]);
             
             document.getElementById('userWelcome').textContent = `Witaj, ${user.name}!`;
-            
-            if (assignedUser) {
-                document.getElementById('assignmentInfo').textContent = `Wyślij pytanie do ${assignedUser.name} (${assignedUser.threadsNick}):`;
-            } else {
-                document.getElementById('assignmentInfo').textContent = 'Brak dostępnego przydziału';
-            }
             
             populateRecipientSelect();
             updateReceivedQuestions();
@@ -868,18 +648,18 @@ async function loadUserData(userId) {
             const questionInput = document.getElementById('questionInput');
             const questionText = questionInput.value.trim();
             const messageDiv = document.getElementById('questionMessage');
+            const recipientSelect = document.getElementById('recipientSelect');
+            const targetUserId = recipientSelect.value;
             
             if (!questionText) {
                 messageDiv.innerHTML = '<div class="error-message">Proszę wpisać pytanie</div>';
                 return;
             }
             
-            if (!assignments[currentUserId]) {
-                messageDiv.innerHTML = '<div class="error-message">Brak dostępnego przydziału</div>';
+            if (!targetUserId) {
+                messageDiv.innerHTML = '<div class="error-message">Wybierz odbiorcę</div>';
                 return;
             }
-            
-            const targetUserId = assignments[currentUserId];
             
             if (!questions[targetUserId]) {
                 questions[targetUserId] = [];
@@ -902,7 +682,6 @@ async function loadUserData(userId) {
             saveDataToFirebase();
         }
 
-        // Modified saveDataToFirebase to only save user-specific data
         async function saveDataToFirebase() {
             if (!db) {
                 alert('Najpierw połącz się z Firebase');
@@ -910,28 +689,12 @@ async function loadUserData(userId) {
             }
         
             try {
-                // Only save questions and assignments that involve the current user
-                const updates = {};
-                
-                // Save questions
-                Object.keys(questions).forEach(targetUserId => {
-                    updates[`questions/${targetUserId}`] = questions[targetUserId];
+                await firebase.database().ref('/').set({
+                    users: users,
+                    questions: questions,
+                    settings: settings,
+                    lastUpdated: new Date().toISOString()
                 });
-                
-                // Save current user's assignment
-                if (assignments[currentUserId] !== undefined) {
-                    updates[`assignments/${currentUserId}`] = assignments[currentUserId];
-                }
-                
-                // Save current user's data
-                const currentUser = users.find(u => u.id === currentUserId);
-                if (currentUser) {
-                    updates[`users/${currentUserId}`] = currentUser;
-                }
-                
-                updates['lastUpdated'] = new Date().toISOString();
-                
-                await firebase.database().ref().update(updates);
             } catch (error) {
                 console.error('Błąd zapisu do Firebase:', error);
                 showMessage('error', 'Błąd zapisu: ' + error.message);
@@ -1083,86 +846,84 @@ async function loadUserData(userId) {
             updateReceivedQuestions();
         }
 
-       // Modified updateAskedQuestions to work with limited data
-function updateAskedQuestions() {
-    const askedQuestionsDiv = document.getElementById('askedQuestions');
-    
-    const userQuestions = [];
-    Object.keys(questions).forEach(targetUserId => {
-        const targetQuestions = questions[targetUserId] || [];
-        targetQuestions.forEach(question => {
-            if (question && question.from === currentUserId) {
-                const targetUser = users.find(u => u.id === targetUserId);
-                userQuestions.push({
-                    ...question,
-                    targetUser: targetUser,
-                    askedTo: targetUserId
+        function updateAskedQuestions() {
+            const askedQuestionsDiv = document.getElementById('askedQuestions');
+            
+            const userQuestions = [];
+            Object.keys(questions).forEach(targetUserId => {
+                const targetQuestions = questions[targetUserId] || [];
+                targetQuestions.forEach(question => {
+                    if (question.from === currentUserId) {
+                        const targetUser = users.find(u => u.id === targetUserId);
+                        userQuestions.push({
+                            ...question,
+                            targetUser: targetUser,
+                            askedTo: targetUserId
+                        });
+                    }
                 });
+            });
+            
+            if (userQuestions.length === 0) {
+                askedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>';
+                return;
             }
-        });
-    });
-    
-    if (userQuestions.length === 0) {
-        askedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>';
-        return;
-    }
-    
-    userQuestions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    
-    askedQuestionsDiv.innerHTML = '';
-    userQuestions.forEach(question => {
-        const questionItem = document.createElement('div');
-        questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
-        
-        let answerSection = '';
-        if (question.answer) {
-            if (question.answer.secret) {
-                answerSection = `
-                    <div class="answer-section">
-                        <div class="answer-item">
-                            <div class="answer-header">
-                                <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
-                                <span class="answer-time">${question.answer.timestamp}</span>
+            
+            userQuestions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            askedQuestionsDiv.innerHTML = '';
+            userQuestions.forEach(question => {
+                const questionItem = document.createElement('div');
+                questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
+                
+                let answerSection = '';
+                if (question.answer) {
+                    if (question.answer.secret) {
+                        answerSection = `
+                            <div class="answer-section">
+                                <div class="answer-item">
+                                    <div class="answer-header">
+                                        <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
+                                        <span class="answer-time">${question.answer.timestamp}</span>
+                                    </div>
+                                    <div class="answer-content">${question.answer.text}</div>
+                                    <div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>
+                                </div>
                             </div>
-                            <div class="answer-content">${question.answer.text}</div>
-                            <div style="font-size: 11px; color: #888;">(Odpowiedź bezpośrednia)</div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                answerSection = `
-                    <div class="answer-section">
-                        <div class="answer-item">
-                            <div class="answer-header">
-                                <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
-                                <span class="answer-time">${question.answer.timestamp}</span>
+                        `;
+                    } else {
+                        answerSection = `
+                            <div class="answer-section">
+                                <div class="answer-item">
+                                    <div class="answer-header">
+                                        <span class="answer-author">${question.targetUser ? question.targetUser.name : 'Nieznany użytkownik'}</span>
+                                        <span class="answer-time">${question.answer.timestamp}</span>
+                                    </div>
+                                    <div class="answer-content">${question.answer.text}</div>
+                                </div>
                             </div>
-                            <div class="answer-content">${question.answer.text}</div>
-                        </div>
+                        `;
+                    }
+                } else {
+                    answerSection = '<div class="answer-section" style="color: #888;">(Brak odpowiedzi)</div>';
+                }
+                
+                questionItem.innerHTML = `
+                    <div class="question-header">
+                        <span class="question-author">Ty</span>
+                        <span class="question-time">${question.timestamp}</span>
                     </div>
+                    <div class="question-content">${question.text}</div>
+                    ${answerSection}
                 `;
-            }
-        } else {
-            answerSection = '<div class="answer-section" style="color: #888;">(Brak odpowiedzi)</div>';
+                askedQuestionsDiv.appendChild(questionItem);
+            });
         }
-        
-        questionItem.innerHTML = `
-            <div class="question-header">
-                <span class="question-author">Ty</span>
-                <span class="question-time">${question.timestamp}</span>
-            </div>
-            <div class="question-content">${question.text}</div>
-            ${answerSection}
-        `;
-        askedQuestionsDiv.appendChild(questionItem);
-    });
-}
         
         document.addEventListener('DOMContentLoaded', function() {
             preloadTheme();
             initFirebase();
         });
-
     </script>
 </body>
 </html>
