@@ -908,28 +908,84 @@ async function saveDataToFirebase() {
     }
 }
         function updateAskedQuestions() {
-            const askedQuestionsDiv = document.getElementById('askedQuestions');
-            
-            const userQuestions = [];
-            Object.keys(questions).forEach(targetUserId => {
-                const targetQuestions = questions[targetUserId] || [];
-                targetQuestions.forEach(question => {
-                    if (question.from === currentUserId) {
-                        const targetUser = users.find(u => u.id === targetUserId);
-                        userQuestions.push({
-                            ...question,
-                            targetUser: targetUser,
-                            askedTo: targetUserId
-                        });
-                    }
+    const askedQuestionsDiv = document.getElementById('askedQuestions');
+    
+    const userQuestions = [];
+    Object.keys(questions).forEach(targetUserId => {
+        const targetQuestions = questions[targetUserId] || [];
+        targetQuestions.forEach(question => {
+            if (question.from === currentUserId) {
+                const targetUser = users.find(u => u.id === targetUserId);
+                userQuestions.push({
+                    ...question,
+                    targetUser: targetUser,
+                    askedTo: targetUserId
                 });
-            });
-            
-            if (userQuestions.length === 0) {
-                askedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>';
-                return;
             }
+        });
+    });
+    
+    if (userQuestions.length === 0) {
+        askedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Nie zadałeś jeszcze żadnych pytań.</p>';
+        return;
+    }
+    
+    // Sort by timestamp (newest first)
+    userQuestions.sort((a, b) => {
+        const dateA = new Date(a.timestamp);
+        const dateB = new Date(b.timestamp);
+        return dateB - dateA;
+    });
+    
+    // Clear the container
+    askedQuestionsDiv.innerHTML = '';
+    
+    // Render each question
+    userQuestions.forEach(question => {
+        const questionItem = document.createElement('div');
+        questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
+        
+        let answerSection = '';
+        if (question.answer) {
+            const answerAuthor = question.targetUser ? question.targetUser.name : 'Nieznany użytkownik';
+            const secretIndicator = question.answer.secret ? '<div style="font-size: 11px; color: #888; margin-top: 5px;">(👀 SEKRET 👀)</div>' : '';
+            
+            answerSection = `
+                <div class="answer-section">
+                    <div class="answer-item">
+                        <div class="answer-header">
+                            <span class="answer-author">${answerAuthor}</span>
+                            <span class="answer-time">${question.answer.timestamp}</span>
+                        </div>
+                        <div class="answer-content">${question.answer.text}</div>
+                        ${secretIndicator}
+                    </div>
+                </div>
+            `;
+        } else {
+            answerSection = `
+                <div style="margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 8px; text-align: center; color: #666;">
+                    Oczekuje na odpowiedź...
+                </div>
+            `;
         }
+        
+        const targetUserName = question.targetUser ? question.targetUser.name : 'Nieznany użytkownik';
+        const targetUserNick = question.targetUser ? (question.targetUser.threadsNick || 'brak nicku') : 'brak nicku';
+        
+        questionItem.innerHTML = `
+            <div class="question-header">
+                <span class="question-author">Do: ${targetUserName} (${targetUserNick})</span>
+                <span class="question-time">${question.timestamp}</span>
+            </div>
+            <div class="question-content">${question.text}</div>
+            ${answerSection}
+        `;
+        
+        askedQuestionsDiv.appendChild(questionItem);
+    });
+}
+        
         document.addEventListener('DOMContentLoaded', function() {
             preloadTheme();
             initFirebase();
