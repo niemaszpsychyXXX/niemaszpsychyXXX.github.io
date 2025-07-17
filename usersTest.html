@@ -519,20 +519,22 @@
                 <p id="userInfo">To twój interfejs do zadawania pytań</p>
             </div>
             
-            <div class="section">
-                <h2>Wyślij Pytanie</h2>
-                <div class="input-group">
-                    <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
-                </div>
-                <div class="recipients-container">
-                    <select id="recipientSelect" class="recipient-select" multiple>
-                        <option value="">Wybierz odbiorców...</option>
-                    </select>
-                    <div class="selected-recipients" id="selectedRecipients"></div>
-                </div>
-                <button onclick="sendQuestion()">Wyślij Pytanie</button>
-                <div id="questionMessage"></div>
+             <div class="section">
+        <h2>Wyślij Pytanie</h2>
+        <div class="input-group">
+            <textarea id="questionInput" placeholder="Wpisz swoje pytanie tutaj..."></textarea>
+        </div>
+        <div class="recipients-container">
+            <div class="recipient-filter">
+                <input type="text" id="recipientSearch" placeholder="Wyszukaj odbiorców..." class="recipient-select">
+                <div class="filter-letters" id="filterLetters"></div>
             </div>
+            <div class="recipients-list" id="recipientsList"></div>
+            <div class="selected-recipients" id="selectedRecipients"></div>
+        </div>
+        <button onclick="sendQuestion()">Wyślij Pytanie</button>
+        <div id="questionMessage"></div>
+    </div>
             
             <div class="user-section">
                 <h2>Pytania dla Ciebie</h2>
@@ -647,33 +649,96 @@
             updateReceivedQuestions();
         }
         
-        function populateRecipientSelect() {
-            const select = document.getElementById('recipientSelect');
-            select.innerHTML = '<option value="">Wybierz odbiorców...</option>';
+         function populateRecipientSelect() {
+            const recipientsList = document.getElementById('recipientsList');
+            const filterLetters = document.getElementById('filterLetters');
+            recipientsList.innerHTML = '';
             
             if (!currentUserId || users.length === 0) return;
             
-            const availableRecipients = users.filter(user => user.id !== currentUserId);
+            // Create alphabet filter
+            const alphabet = 'AĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ'.split('');
+            filterLetters.innerHTML = '';
             
+            alphabet.forEach(letter => {
+                const letterBtn = document.createElement('div');
+                letterBtn.className = 'filter-letter';
+                letterBtn.textContent = letter;
+                letterBtn.onclick = () => filterByLetter(letter);
+                filterLetters.appendChild(letterBtn);
+            });
+            
+            // Add "All" filter
+            const allBtn = document.createElement('div');
+            allBtn.className = 'filter-letter active';
+            allBtn.textContent = 'WSZYSTKIE';
+            allBtn.onclick = () => filterByLetter('');
+            filterLetters.appendChild(allBtn);
+            
+            // Sort users alphabetically
+            const availableRecipients = users
+                .filter(user => user.id !== currentUserId)
+                .sort((a, b) => {
+                    const nameA = a.name.toUpperCase();
+                    const nameB = b.name.toUpperCase();
+                    return nameA.localeCompare(nameB, 'pl');
+                });
+            
+            // Create checkbox list
             availableRecipients.forEach(user => {
-                const option = document.createElement('option');
-                option.value = user.id;
-                option.textContent = `${user.name} (${user.threadsNick || 'brak nicku'})`;
-                select.appendChild(option);
+                const recipientItem = document.createElement('label');
+                recipientItem.className = 'recipient-checkbox';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = user.id;
+                checkbox.onchange = () => updateSelectedRecipients();
+                
+                const userLabel = document.createElement('span');
+                userLabel.textContent = `${user.name} (${user.threadsNick || 'brak nicku'})`;
+                
+                recipientItem.appendChild(checkbox);
+                recipientItem.appendChild(userLabel);
+                recipientsList.appendChild(recipientItem);
             });
             
-            // Add event listener for multi-select
-            select.addEventListener('change', function() {
-                updateSelectedRecipients();
+            // Add search functionality
+            document.getElementById('recipientSearch').addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase();
+                const items = recipientsList.querySelectorAll('.recipient-checkbox');
+                
+                items.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    item.style.display = text.includes(searchTerm) ? 'flex' : 'none';
+                });
             });
+        }
+
+         function filterByLetter(letter) {
+            const items = document.querySelectorAll('.filter-letter');
+            items.forEach(item => item.classList.remove('active'));
+            
+            if (letter === '') {
+                document.querySelectorAll('.recipient-checkbox').forEach(item => {
+                    item.style.display = 'flex';
+                });
+                items[items.length - 1].classList.add('active'); // "All" button
+                return;
+            }
+            
+            document.querySelectorAll('.recipient-checkbox').forEach(item => {
+                const firstLetter = item.textContent.trim().charAt(0).toUpperCase();
+                item.style.display = firstLetter === letter ? 'flex' : 'none';
+            });
+            
+            // Activate the clicked letter button
+            Array.from(items).find(item => item.textContent === letter)?.classList.add('active');
         }
         
         function updateSelectedRecipients() {
-            const select = document.getElementById('recipientSelect');
+            const checkboxes = document.querySelectorAll('#recipientsList input[type="checkbox"]:checked');
             const selectedContainer = document.getElementById('selectedRecipients');
-            selectedRecipients = Array.from(select.selectedOptions)
-                .filter(option => option.value !== "")
-                .map(option => option.value);
+            selectedRecipients = Array.from(checkboxes).map(checkbox => checkbox.value);
             
             selectedContainer.innerHTML = '';
             
@@ -692,17 +757,11 @@
         }
         
         function removeRecipient(recipientId) {
-            const select = document.getElementById('recipientSelect');
-            selectedRecipients = selectedRecipients.filter(id => id !== recipientId);
-            
-            // Update select options
-            Array.from(select.options).forEach(option => {
-                if (option.value === recipientId) {
-                    option.selected = false;
-                }
-            });
-            
-            updateSelectedRecipients();
+            const checkbox = document.querySelector(`#recipientsList input[value="${recipientId}"]`);
+            if (checkbox) {
+                checkbox.checked = false;
+                updateSelectedRecipients();
+            }
         }
 
         function preloadTheme() {
