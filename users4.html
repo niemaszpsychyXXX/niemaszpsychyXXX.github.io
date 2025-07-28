@@ -460,7 +460,28 @@
             messagingSenderId: "381728790253",
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
+        function ensureQuestionIds() {
+            Object.keys(questions).forEach(userId => {
+                if (Array.isArray(questions[userId])) {
+                    questions[userId].forEach((question, index) => {
+                        if (!question.id) {
+                            question.id = generateQuestionId(userId, index);
+                            console.log(`Added ID ${question.id} to question at index ${index} for user ${userId}`);
+                        }
+                    });
+                }
+            });
+        }
 
+        function generateQuestionId(userId = null, index = null) {
+            // Generate a unique ID for a question
+            const timestamp = Date.now();
+            const randomPart = Math.random().toString(36).substr(2, 9);
+            const userPart = userId ? `_${userId}` : '';
+            const indexPart = index !== null ? `_${index}` : '';
+            return `q_${timestamp}${userPart}${indexPart}_${randomPart}`;
+        }
+        
         function populateRecipientSelect() {
             const select = document.getElementById('recipientSelect');
             select.innerHTML = '<option value="">Wybierz odbiorcę...</option>';
@@ -555,6 +576,25 @@
         function setupUserSpecificListeners(userId) {
             firebase.database().ref(`questions/${userId}`).on('value', (snapshot) => {
                 questions[userId] = snapshot.val() || [];
+                
+                // Ensure all questions have IDs after loading from Firebase
+                if (Array.isArray(questions[userId])) {
+                    let needsUpdate = false;
+                    questions[userId].forEach((question, index) => {
+                        if (!question.id) {
+                            question.id = generateQuestionId(userId, index);
+                            needsUpdate = true;
+                        }
+                    });
+                    
+                    // If we added IDs, save back to Firebase
+                    if (needsUpdate) {
+                        console.log(`Added missing IDs to questions for user ${userId}`);
+                        firebase.database().ref(`questions/${userId}`).set(questions[userId])
+                            .catch(error => console.error('Error updating question IDs:', error));
+                    }
+                }
+                
                 updateReceivedQuestions();
             });
             
@@ -562,13 +602,21 @@
                 const targetUserId = questionsSnapshot.key;
                 const targetQuestions = questionsSnapshot.val() || [];
                 
-                targetQuestions.forEach((question, index) => {
-                    if (question.from === userId) {
-                        if (!questions[targetUserId]) questions[targetUserId] = [];
-                        questions[targetUserId][index] = question;
-                        updateAskedQuestions();
-                    }
-                });
+                if (Array.isArray(targetQuestions)) {
+                    targetQuestions.forEach((question, index) => {
+                        if (question.from === userId) {
+                            if (!questions[targetUserId]) questions[targetUserId] = [];
+                            
+                            // Ensure question has ID
+                            if (!question.id) {
+                                question.id = generateQuestionId(targetUserId, index);
+                            }
+                            
+                            questions[targetUserId][index] = question;
+                            updateAskedQuestions();
+                        }
+                    });
+                }
             });
             
             firebase.database().ref(`users/${userId}`).on('value', (snapshot) => {
@@ -594,6 +642,10 @@
                 users = data.users || [];
                 questions = data.questions || {};
                 settings = data.settings || { mode: 'open_both' };
+                
+                // Ensure all loaded questions have IDs
+                ensureQuestionIds();
+                
                 updateUI();
             });
         }
@@ -720,12 +772,21 @@
                 return;
             }
             
-            // Add IDs to questions that don't have them (for backward compatibility)
+            // Ensure all questions have IDs and track if we need to save changes
+            let needsUpdate = false;
             userQuestions.forEach((question, index) => {
                 if (!question.id) {
-                    question.id = 'q_legacy_' + index + '_' + Date.now();
+                    question.id = generateQuestionId(currentUserId, index);
+                    needsUpdate = true;
                 }
             });
+            
+            // If we added IDs, save to Firebase
+            if (needsUpdate) {
+                console.log(`Added missing IDs to received questions for user ${currentUserId}`);
+                firebase.database().ref(`questions/${currentUserId}`).set(userQuestions)
+                    .catch(error => console.error('Error updating question IDs:', error));
+            }
             
             // Sort by timestamp (newest first)
             const sortedQuestions = [...userQuestions].sort((a, b) => {
@@ -832,7 +893,28 @@
             
             // Find the question by ID
             const userQuestions = questions[currentUserId] || [];
-            const questionIndex = userQuestions.findIndex(q => q.id === questionId);
+            let questionIndex = userQuestions.findIndex(q => q.id === questionId);
+            
+            // If question not found by ID, try to find by other means and assign ID
+            if (questionIndex === -1) {
+                console.warn(`Question with ID ${questionId} not found, attempting recovery...`);
+                
+                // Try to find a question without ID that matches the textarea
+                const textareaValue = textarea.value.trim();
+                for (let i = 0; i < userQuestions.length; i++) {
+                    if (!userQuestions[i].id && !userQuestions[i].answer) {
+                        // Assign the expected ID to this question
+                        userQuestions[i].id = questionId;
+                        questionIndex = i;
+                        console.log(`Assigned ID ${questionId} to question at index ${i}`);
+                        
+                        // Save the updated question with ID
+                        firebase.database().ref(`questions/${currentUserId}/${i}/id`).set(questionId)
+                            .catch(error => console.error('Error updating question ID:', error));
+                        break;
+                    }
+                }
+            }
             
             if (questionIndex === -1) {
                 alert('Nie znaleziono pytania');
@@ -974,8 +1056,16 @@
         const userQuestions = [];
         Object.keys(questions).forEach(targetUserId => {
             const targetQuestions = questions[targetUserId] || [];
-            targetQuestions.forEach(question => {
+            targetQuestions.forEach((question, index) => {
                 if (question.from === currentUserId) {
+                    // Ensure question has ID
+                    if (!question.id) {
+                        question.id = generateQuestionId(targetUserId, index);
+                        // Save the ID to Firebase
+                        firebase.database().ref(`questions/${targetUserId}/${index}/id`).set(question.id)
+                            .catch(error => console.error('Error updating question ID:', error));
+                    }
+                    
                     const targetUser = users.find(u => u.id === targetUserId);
                     userQuestions.push({
                         ...question,
