@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -460,7 +461,30 @@
             messagingSenderId: "381728790253",
             appId: "1:381728790253:web:a9b3a40ab52e28a11b5ee4"
         };
+        function ensureQuestionIds() {
+            Object.keys(questions).forEach(userId => {
+                if (Array.isArray(questions[userId])) {
+                    // Filter out null/undefined entries and ensure all questions have IDs
+                    questions[userId] = questions[userId].filter(question => question != null);
+                    questions[userId].forEach((question, index) => {
+                        if (question && !question.id) {
+                            question.id = generateQuestionId(userId, index);
+                            console.log(`Added ID ${question.id} to question at index ${index} for user ${userId}`);
+                        }
+                    });
+                }
+            });
+        }
 
+        function generateQuestionId(userId = null, index = null) {
+            // Generate a unique ID for a question
+            const timestamp = Date.now();
+            const randomPart = Math.random().toString(36).substr(2, 9);
+            const userPart = userId ? `_${userId}` : '';
+            const indexPart = index !== null ? `_${index}` : '';
+            return `q_${timestamp}${userPart}${indexPart}_${randomPart}`;
+        }
+        
         function populateRecipientSelect() {
             const select = document.getElementById('recipientSelect');
             select.innerHTML = '<option value="">Wybierz odbiorcę...</option>';
@@ -555,6 +579,28 @@
         function setupUserSpecificListeners(userId) {
             firebase.database().ref(`questions/${userId}`).on('value', (snapshot) => {
                 questions[userId] = snapshot.val() || [];
+                
+                // Ensure all questions have IDs after loading from Firebase
+                if (Array.isArray(questions[userId])) {
+                    // Filter out null/undefined entries first
+                    questions[userId] = questions[userId].filter(question => question != null);
+                    
+                    let needsUpdate = false;
+                    questions[userId].forEach((question, index) => {
+                        if (question && !question.id) {
+                            question.id = generateQuestionId(userId, index);
+                            needsUpdate = true;
+                        }
+                    });
+                    
+                    // If we added IDs, save back to Firebase
+                    if (needsUpdate) {
+                        console.log(`Added missing IDs to questions for user ${userId}`);
+                        firebase.database().ref(`questions/${userId}`).set(questions[userId])
+                            .catch(error => console.error('Error updating question IDs:', error));
+                    }
+                }
+                
                 updateReceivedQuestions();
             });
             
@@ -562,13 +608,24 @@
                 const targetUserId = questionsSnapshot.key;
                 const targetQuestions = questionsSnapshot.val() || [];
                 
-                targetQuestions.forEach((question, index) => {
-                    if (question.from === userId) {
-                        if (!questions[targetUserId]) questions[targetUserId] = [];
-                        questions[targetUserId][index] = question;
-                        updateAskedQuestions();
-                    }
-                });
+                if (Array.isArray(targetQuestions)) {
+                    // Filter out null/undefined entries
+                    const validQuestions = targetQuestions.filter(question => question != null);
+                    
+                    validQuestions.forEach((question, index) => {
+                        if (question && question.from === userId) {
+                            if (!questions[targetUserId]) questions[targetUserId] = [];
+                            
+                            // Ensure question has ID
+                            if (!question.id) {
+                                question.id = generateQuestionId(targetUserId, index);
+                            }
+                            
+                            questions[targetUserId][index] = question;
+                            updateAskedQuestions();
+                        }
+                    });
+                }
             });
             
             firebase.database().ref(`users/${userId}`).on('value', (snapshot) => {
@@ -594,10 +651,13 @@
                 users = data.users || [];
                 questions = data.questions || {};
                 settings = data.settings || { mode: 'open_both' };
+                
+                // Ensure all loaded questions have IDs
+                ensureQuestionIds();
+                
                 updateUI();
             });
         }
-
         function showMessage(type, text) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `${type}-message`;
@@ -644,43 +704,69 @@
             }
         }
 
-        function sendQuestion() {
-            const questionInput = document.getElementById('questionInput');
-            const questionText = questionInput.value.trim();
-            const messageDiv = document.getElementById('questionMessage');
-            const recipientSelect = document.getElementById('recipientSelect');
-            const targetUserId = recipientSelect.value;
-            
-            if (!questionText) {
-                messageDiv.innerHTML = '<div class="error-message">Proszę wpisać pytanie</div>';
-                return;
+        async function sendQuestion() {
+    const questionInput = document.getElementById('questionInput');
+    const questionText = questionInput.value.trim();
+    const messageDiv = document.getElementById('questionMessage');
+    const recipientSelect = document.getElementById('recipientSelect');
+    const targetUserId = recipientSelect.value;
+    
+    if (!questionText) {
+        messageDiv.innerHTML = '<div class="error-message">Proszę wpisać pytanie</div>';
+        return;
+    }
+    
+    if (!targetUserId) {
+        messageDiv.innerHTML = '<div class="error-message">Wybierz odbiorcę</div>';
+        return;
+    }
+
+    const questionId = generateQuestionId(targetUserId);
+    const newQuestion = {
+        id: questionId,
+        text: questionText,
+        timestamp: new Date().toLocaleString(),
+        from: currentUserId,
+        mode: settings.mode || 'open_both'
+    };
+
+    const submitButton = document.querySelector('.recipient-controls button');
+    const originalButtonText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.textContent = 'Wysyłanie...';
+
+    try {
+        const questionsRef = firebase.database().ref(`questions/${targetUserId}`);
+        
+        // Use transaction to safely add the new question
+        await questionsRef.transaction((currentQuestions) => {
+            if (!currentQuestions) {
+                return [newQuestion];
             }
-            
-            if (!targetUserId) {
-                messageDiv.innerHTML = '<div class="error-message">Wybierz odbiorcę</div>';
-                return;
-            }
-            
-            if (!questions[targetUserId]) {
-                questions[targetUserId] = [];
-            }
-            
-            questions[targetUserId].push({
-                text: questionText,
-                timestamp: new Date().toLocaleString(),
-                from: currentUserId,
-                mode: settings.mode || 'open_both'
-            });
-            
-            questionInput.value = '';
-            messageDiv.innerHTML = '<div class="success-message">Pytanie zostało wysłane pomyślnie!</div>';
-            
-            setTimeout(() => {
-                messageDiv.innerHTML = '';
-            }, 3000);
-            
-            saveDataToFirebase();
+            return [...currentQuestions, newQuestion];
+        });
+
+        // Update local data after successful transaction
+        if (!questions[targetUserId]) {
+            questions[targetUserId] = [];
         }
+        questions[targetUserId].push(newQuestion);
+
+        questionInput.value = '';
+        messageDiv.innerHTML = '<div class="success-message">Pytanie zostało wysłane pomyślnie!</div>';
+        
+        setTimeout(() => {
+            messageDiv.innerHTML = '';
+        }, 3000);
+
+    } catch (error) {
+        console.error('Error sending question:', error);
+        messageDiv.innerHTML = `<div class="error-message">Błąd podczas wysyłania pytania: ${error.message}</div>`;
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+    }
+}
 
         async function saveDataToFirebase() {
             if (!db) {
@@ -701,220 +787,292 @@
             }
         }
 
-        // Replace the updateReceivedQuestions function with this fixed version:
-function updateReceivedQuestions() {
-    const focusedElement = document.activeElement;
-    let focusedOriginalIndex = null;
-    if (focusedElement && focusedElement.dataset.originalIndex) {
-        focusedOriginalIndex = focusedElement.dataset.originalIndex;
-    }
+       function updateReceivedQuestions() {
+            const focusedElement = document.activeElement;
+            let focusedQuestionId = null;
+            if (focusedElement && focusedElement.dataset.questionId) {
+                focusedQuestionId = focusedElement.dataset.questionId;
+            }
+                
+            const receivedQuestionsDiv = document.getElementById('receivedQuestions');
+            const userQuestions = questions[currentUserId] || [];
+            
+            if (!Array.isArray(userQuestions) || userQuestions.length === 0) {
+                receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
+                return;
+            }
+            
+            // Filter out null/undefined questions and ensure all questions have IDs
+            const validQuestions = userQuestions.filter(question => question != null);
+            let needsUpdate = false;
+            
+            validQuestions.forEach((question, index) => {
+                if (question && !question.id) {
+                    question.id = generateQuestionId(currentUserId, index);
+                    needsUpdate = true;
+                }
+            });
+            
+            // Update the original array with valid questions
+            if (validQuestions.length !== userQuestions.length || needsUpdate) {
+                questions[currentUserId] = validQuestions;
+                console.log(`Cleaned and updated questions for user ${currentUserId}`);
+                firebase.database().ref(`questions/${currentUserId}`).set(validQuestions)
+                    .catch(error => console.error('Error updating question IDs:', error));
+            }
+            
+            if (validQuestions.length === 0) {
+                receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
+                return;
+            }
+            
+            // Sort by timestamp (newest first)
+            const sortedQuestions = [...validQuestions].sort((a, b) => {
+                const dateA = new Date(a.timestamp);
+                const dateB = new Date(b.timestamp);
+                return dateB - dateA;
+            });
+            
+            // Store current form states using question IDs
+            const currentFormStates = {};
+            sortedQuestions.forEach((question) => {
+                if (question && question.id) {
+                    const answerTextarea = document.querySelector(`[data-question-id="${question.id}"]`);
+                    const secretCheckbox = document.querySelector(`[data-question-id="${question.id}"][type="checkbox"]`);
+                    
+                    if (answerTextarea && answerTextarea.tagName === 'TEXTAREA') {
+                        currentFormStates[question.id] = {
+                            text: answerTextarea.value,
+                            secret: secretCheckbox ? secretCheckbox.checked : false
+                        };
+                    }
+                }
+            });
+            
+            receivedQuestionsDiv.innerHTML = '';
+            sortedQuestions.forEach((question, displayIndex) => {
+                if (!question || !question.id) {
+                    console.warn('Skipping invalid question:', question);
+                    return;
+                }
+                
+                const fromUser = users.find(u => u.id === question.from);
+                const questionItem = document.createElement('div');
+                questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
+                
+                let answerSection = '';
+                if (question.answer) {
+                    answerSection = `
+                        <div class="answer-section">
+                            <div class="answer-item">
+                                <div class="answer-header">
+                                    <span class="answer-author">Ty</span>
+                                    <span class="answer-time">${question.answer.timestamp}</span>
+                                </div>
+                                <div class="answer-content">${question.answer.text}</div>
+                                ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Sekret)</div>' : ''}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    answerSection = `
+                        <div class="answer-form">
+                            <textarea class="answer-textarea" data-question-id="${question.id}" placeholder="Napisz odpowiedź..."></textarea>
+                            <div style="margin-bottom: 5px;">
+                                <input type="checkbox" data-question-id="${question.id}">
+                                <label>👀 SEKRET 👀</label>
+                            </div>
+                            <button class="answer-btn" onclick="sendAnswer('${question.id}')">Wyślij odpowiedź</button>
+                        </div>
+                    `;
+                }
+                
+                questionItem.innerHTML = `
+                    <div class="question-header">
+                        <span class="question-author">${fromUser ? fromUser.name : 'Nieznany użytkownik'}</span>
+                        <span class="question-time">${question.timestamp}</span>
+                    </div>
+                    <div class="question-content">${question.text}</div>
+                    ${answerSection}
+                `;
+                receivedQuestionsDiv.prepend(questionItem);
+                
+                // Restore form states using question IDs
+                if (currentFormStates[question.id] && !question.answer) {
+                    const answerTextarea = document.querySelector(`[data-question-id="${question.id}"]`);
+                    const secretCheckbox = document.querySelector(`[data-question-id="${question.id}"][type="checkbox"]`);
+                    
+                    if (answerTextarea && answerTextarea.tagName === 'TEXTAREA') {
+                        answerTextarea.value = currentFormStates[question.id].text;
+                    }
+                    if (secretCheckbox) {
+                        secretCheckbox.checked = currentFormStates[question.id].secret;
+                    }
+                }
+            });
         
-    const receivedQuestionsDiv = document.getElementById('receivedQuestions');
-    const userQuestions = questions[currentUserId] || [];
+            // Restore focus using question ID
+            if (focusedQuestionId !== null) {
+                const newTextarea = document.querySelector(`[data-question-id="${focusedQuestionId}"]`);
+                if (newTextarea && newTextarea.tagName === 'TEXTAREA') {
+                    newTextarea.focus();
+                    if (focusedElement.selectionStart !== undefined) {
+                        newTextarea.selectionStart = focusedElement.selectionStart;
+                        newTextarea.selectionEnd = focusedElement.selectionEnd;
+                    }
+                }
+            }
+        }
+        
+        async function sendAnswer(questionId) {
+    const textarea = document.querySelector(`[data-question-id="${questionId}"]`);
+    const checkbox = document.querySelector(`[data-question-id="${questionId}"][type="checkbox"]`);
     
-    if (userQuestions.length === 0) {
-        receivedQuestionsDiv.innerHTML = '<p style="text-align: center; color: #666;">Brak pytań.</p>';
+    if (!textarea || !textarea.value.trim()) {
+        alert('Proszę wpisać odpowiedź');
         return;
     }
-    
-    // Create array with original indices preserved
-    const questionsWithIndices = userQuestions.map((question, originalIndex) => ({
-        ...question,
-        originalIndex: originalIndex
-    }));
-    
-    // Sort by timestamp (newest first)
-    questionsWithIndices.sort((a, b) => {
-        const dateA = new Date(a.timestamp);
-        const dateB = new Date(b.timestamp);
-        return dateB - dateA;
-    });
-    
-    // Store current form states using original indices
-    const currentFormStates = {};
-    questionsWithIndices.forEach((question) => {
-        const answerTextarea = document.querySelector(`[data-original-index="${question.originalIndex}"]`);
-        const secretCheckbox = document.querySelector(`[data-original-index="${question.originalIndex}"][type="checkbox"]`);
-        
-        if (answerTextarea && answerTextarea.tagName === 'TEXTAREA') {
-            currentFormStates[question.originalIndex] = {
-                text: answerTextarea.value,
-                secret: secretCheckbox ? secretCheckbox.checked : false
-            };
-        }
-    });
-    
-    receivedQuestionsDiv.innerHTML = '';
-    questionsWithIndices.forEach((question, displayIndex) => {
-        const fromUser = users.find(u => u.id === question.from);
-        const questionItem = document.createElement('div');
-        questionItem.className = `question-item ${question.answer ? 'has-answer' : ''}`;
-        
-        let answerSection = '';
-        if (question.answer) {
-            answerSection = `
-                <div class="answer-section">
-                    <div class="answer-item">
-                        <div class="answer-header">
-                            <span class="answer-author">Ty</span>
-                            <span class="answer-time">${question.answer.timestamp}</span>
-                        </div>
-                        <div class="answer-content">${question.answer.text}</div>
-                        ${question.answer.secret ? '<div style="font-size: 11px; color: #888;">(Sekret)</div>' : ''}
-                    </div>
-                </div>
-            `;
-        } else {
-            answerSection = `
-                <div class="answer-form">
-                    <textarea class="answer-textarea" data-original-index="${question.originalIndex}" placeholder="Napisz odpowiedź..."></textarea>
-                    <div style="margin-bottom: 5px;">
-                        <input type="checkbox" data-original-index="${question.originalIndex}">
-                        <label>👀 SEKRET 👀</label>
-                    </div>
-                    <button class="answer-btn" onclick="sendAnswer(${question.originalIndex})">Wyślij odpowiedź</button>
-                </div>
-            `;
-        }
-        
-        questionItem.innerHTML = `
-            <div class="question-header">
-                <span class="question-author">${fromUser ? fromUser.name : 'Nieznany użytkownik'}</span>
-                <span class="question-time">${question.timestamp}</span>
-            </div>
-            <div class="question-content">${question.text}</div>
-            ${answerSection}
-        `;
-        receivedQuestionsDiv.prepend(questionItem);
-        
-        // Restore form states using original indices
-        if (currentFormStates[question.originalIndex] && !question.answer) {
-            const answerTextarea = document.querySelector(`[data-original-index="${question.originalIndex}"]`);
-            const secretCheckbox = document.querySelector(`[data-original-index="${question.originalIndex}"][type="checkbox"]`);
-            
-            if (answerTextarea && answerTextarea.tagName === 'TEXTAREA') {
-                answerTextarea.value = currentFormStates[question.originalIndex].text;
-            }
-            if (secretCheckbox) {
-                secretCheckbox.checked = currentFormStates[question.originalIndex].secret;
-            }
-        }
-    });
 
-    // Restore focus using original index
-    if (focusedOriginalIndex !== null) {
-        const newTextarea = document.querySelector(`[data-original-index="${focusedOriginalIndex}"]`);
-        if (newTextarea && newTextarea.tagName === 'TEXTAREA') {
-            newTextarea.focus();
-            if (focusedElement.selectionStart !== undefined) {
-                newTextarea.selectionStart = focusedElement.selectionStart;
-                newTextarea.selectionEnd = focusedElement.selectionEnd;
+    const answerData = {
+        text: textarea.value.trim(),
+        timestamp: new Date().toLocaleString(),
+        secret: checkbox ? checkbox.checked : false,
+        mode: settings.mode || 'open_both'
+    };
+
+    // Disable the button to prevent multiple submissions
+    const submitButton = textarea.parentElement.querySelector('.answer-btn');
+    const originalButtonText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.textContent = 'Wysyłanie...';
+
+    try {
+        // First find the question path using a transaction
+        let questionPath = null;
+        let questionIndex = -1;
+        
+        // Search through all users' questions to find the matching question ID
+        const questionsRef = firebase.database().ref('questions');
+        const questionsSnapshot = await questionsRef.once('value');
+        const allQuestions = questionsSnapshot.val() || {};
+        
+        for (const userId in allQuestions) {
+            if (Array.isArray(allQuestions[userId])) {
+                const index = allQuestions[userId].findIndex(q => q && q.id === questionId);
+                if (index !== -1) {
+                    questionPath = `questions/${userId}/${index}/answer`;
+                    questionIndex = index;
+                    break;
+                }
             }
         }
-    }
-}
-        // Replace the sendAnswer function with this fixed version:
-function sendAnswer(originalIndex) {
-    try {
-        const textarea = document.querySelector(`[data-original-index="${originalIndex}"]`);
-        const checkbox = document.querySelector(`[data-original-index="${originalIndex}"][type="checkbox"]`);
-        
-        if (!textarea || !textarea.value.trim()) {
-            alert('Proszę wpisać odpowiedź');
-            return;
+
+        if (!questionPath) {
+            throw new Error('Nie znaleziono pytania');
         }
-        
-        // Validate that the question exists and doesn't already have an answer
-        if (!questions[currentUserId] || !questions[currentUserId][originalIndex]) {
-            alert('Nie znaleziono pytania');
-            return;
+
+        // Use transaction to safely update the answer
+        const answerRef = firebase.database().ref(questionPath);
+        await answerRef.transaction((currentAnswer) => {
+            // If there's already an answer, don't overwrite it
+            if (currentAnswer) {
+                throw new Error('To pytanie już ma odpowiedź');
+            }
+            return answerData;
+        });
+
+        // Update local data after successful transaction
+        const userId = questionPath.split('/')[1];
+        if (!questions[userId]) questions[userId] = [];
+        if (questions[userId][questionIndex]) {
+            questions[userId][questionIndex].answer = answerData;
         }
-        
-        if (questions[currentUserId][originalIndex].answer) {
-            alert('To pytanie już ma odpowiedź');
-            return;
-        }
-        
-        // Create a deep copy to avoid reference issues
-        const updatedQuestions = JSON.parse(JSON.stringify(questions));
-        
-        // Add the answer to the specific question
-        updatedQuestions[currentUserId][originalIndex].answer = {
-            text: textarea.value.trim(),
-            timestamp: new Date().toLocaleString(),
-            secret: checkbox ? checkbox.checked : false,
-            mode: settings.mode || 'open_both'
-        };
-        
-        // Update the global questions object
-        questions = updatedQuestions;
-        
-        // Save to Firebase
-        saveDataToFirebase();
-        
+
         // Update UI
         updateReceivedQuestions();
-        
+        updateAskedQuestions();
+
     } catch (error) {
         console.error('Error sending answer:', error);
-        showMessage('error', 'Wystąpił błąd podczas wysyłania odpowiedzi: ' + error.message);
+        alert(`Błąd podczas wysyłania odpowiedzi: ${error.message}`);
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
     }
 }
-
-        // Enhanced saveDataToFirebase function with better error handling:
-async function saveDataToFirebase() {
-    if (!db) {
-        console.error('Database not initialized');
-        showMessage('error', 'Błąd: Baza danych nie jest zainicjalizowana');
-        return;
-    }
-
-    try {
-        // Create a clean copy of data without any undefined values
-        const cleanData = {
-            users: users || [],
-            questions: questions || {},
-            settings: settings || { mode: 'open_both' },
-            lastUpdated: new Date().toISOString()
-        };
         
-        // Validate questions structure
-        Object.keys(cleanData.questions).forEach(userId => {
-            if (!Array.isArray(cleanData.questions[userId])) {
-                console.warn(`Invalid questions array for user ${userId}`);
-                cleanData.questions[userId] = [];
+        async function saveDataToFirebase() {
+            if (!db) {
+                console.error('Database not initialized');
+                showMessage('error', 'Błąd: Baza danych nie jest zainicjalizowana');
+                return false;
             }
-        });
         
-        await firebase.database().ref('/').update(cleanData);
-        console.log('Data saved successfully to Firebase');
-        
-    } catch (error) {
-        console.error('Error saving to Firebase:', error);
-        showMessage('error', 'Błąd zapisu do bazy danych: ' + error.message);
-        
-        // Attempt to reload data from Firebase to sync
-        try {
-            const snapshot = await firebase.database().ref('/').once('value');
-            const data = snapshot.val() || {};
-            questions = data.questions || {};
-            users = data.users || [];
-            settings = data.settings || { mode: 'open_both' };
-            updateUI();
-            console.log('Data reloaded from Firebase after save error');
-        } catch (reloadError) {
-            console.error('Error reloading data:', reloadError);
+            try {
+                // Create a clean copy of data without any undefined values
+                const cleanData = {
+                    users: users || [],
+                    questions: questions || {},
+                    settings: settings || { mode: 'open_both' },
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                // Validate questions structure and ensure all questions have IDs
+                Object.keys(cleanData.questions).forEach(userId => {
+                    if (!Array.isArray(cleanData.questions[userId])) {
+                        console.warn(`Invalid questions array for user ${userId}`);
+                        cleanData.questions[userId] = [];
+                    } else {
+                        // Ensure all questions have IDs
+                        cleanData.questions[userId].forEach((question, index) => {
+                            if (!question.id) {
+                                question.id = 'q_legacy_' + userId + '_' + index + '_' + Date.now();
+                            }
+                        });
+                    }
+                });
+                
+                await firebase.database().ref('/').update(cleanData);
+                console.log('Data saved successfully to Firebase');
+                return true;
+                
+            } catch (error) {
+                console.error('Error saving to Firebase:', error);
+                showMessage('error', 'Błąd zapisu do bazy danych: ' + error.message);
+                
+                // Attempt to reload data from Firebase to sync
+                try {
+                    const snapshot = await firebase.database().ref('/').once('value');
+                    const data = snapshot.val() || {};
+                    questions = data.questions || {};
+                    users = data.users || [];
+                    settings = data.settings || { mode: 'open_both' };
+                    updateUI();
+                    console.log('Data reloaded from Firebase after save error');
+                } catch (reloadError) {
+                    console.error('Error reloading data:', reloadError);
+                }
+                
+                return false;
+            }
         }
-    }
-}
-        function updateAskedQuestions() {
+        
+   function updateAskedQuestions() {
     const askedQuestionsDiv = document.getElementById('askedQuestions');
     
     const userQuestions = [];
     Object.keys(questions).forEach(targetUserId => {
         const targetQuestions = questions[targetUserId] || [];
-        targetQuestions.forEach(question => {
+        targetQuestions.forEach((question, index) => {
             if (question.from === currentUserId) {
+                // Ensure question has ID
+                if (!question.id) {
+                    question.id = generateQuestionId(targetUserId, index);
+                    // Save the ID to Firebase
+                    firebase.database().ref(`questions/${targetUserId}/${index}/id`).set(question.id)
+                        .catch(error => console.error('Error updating question ID:', error));
+                }
+                
                 const targetUser = users.find(u => u.id === targetUserId);
                 userQuestions.push({
                     ...question,
