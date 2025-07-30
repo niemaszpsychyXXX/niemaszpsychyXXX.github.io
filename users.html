@@ -576,87 +576,55 @@
         }
 
         function setupUserSpecificListeners(userId) {
-            firebase.database().ref(`questions/${userId}`).on('value', (snapshot) => {
-                questions[userId] = snapshot.val() || [];
-                
-                // Ensure all questions have IDs after loading from Firebase
-                if (Array.isArray(questions[userId])) {
-                    // Filter out null/undefined entries first
-                    questions[userId] = questions[userId].filter(question => question != null);
-                    
-                    let needsUpdate = false;
-                    questions[userId].forEach((question, index) => {
-                        if (question && !question.id) {
-                            question.id = generateQuestionId(userId, index);
-                            needsUpdate = true;
-                        }
-                    });
-                    
-                    // If we added IDs, save back to Firebase
-                    if (needsUpdate) {
-                        console.log(`Added missing IDs to questions for user ${userId}`);
-                        firebase.database().ref(`questions/${userId}`).set(questions[userId])
-                            .catch(error => console.error('Error updating question IDs:', error));
-                    }
-                }
-                
-                updateReceivedQuestions();
-            });
-            
-            firebase.database().ref('questions').on('child_added', (questionsSnapshot) => {
-                const targetUserId = questionsSnapshot.key;
-                const targetQuestions = questionsSnapshot.val() || [];
-                
-                if (Array.isArray(targetQuestions)) {
-                    // Filter out null/undefined entries
-                    const validQuestions = targetQuestions.filter(question => question != null);
-                    
-                    validQuestions.forEach((question, index) => {
-                        if (question && question.from === userId) {
-                            if (!questions[targetUserId]) questions[targetUserId] = [];
-                            
-                            // Ensure question has ID
-                            if (!question.id) {
-                                question.id = generateQuestionId(targetUserId, index);
-                            }
-                            
-                            questions[targetUserId][index] = question;
-                            updateAskedQuestions();
-                        }
-                    });
-                }
-            });
-            
-            firebase.database().ref(`users/${userId}`).on('value', (snapshot) => {
-                const userData = snapshot.val();
-                if (userData) {
-                    const userIndex = users.findIndex(u => u.id === userId);
-                    if (userIndex >= 0) {
-                        users[userIndex] = {...users[userIndex], ...userData};
-                    } else {
-                        users.push({id: userId, ...userData});
-                    }
-                    applyTheme(userData);
-                    updateUI();
-                }
-            });
-            
-            firebase.database().ref('settings').on('value', (snapshot) => {
-                settings = snapshot.val() || { mode: 'open_both' };
-            });
-            
-            firebase.database().ref().once('value').then((snapshot) => {
-                const data = snapshot.val() || {};
-                users = data.users || [];
-                questions = data.questions || {};
-                settings = data.settings || { mode: 'open_both' };
-                
-                // Ensure all loaded questions have IDs
-                ensureQuestionIds();
-                
-                updateUI();
-            });
+    // Listen to specific user's questions with value events
+    firebase.database().ref(`questions/${userId}`).on('value', (snapshot) => {
+        const newQuestions = snapshot.val() || [];
+        
+        // Filter out null/undefined entries
+        const validQuestions = Array.isArray(newQuestions) ? 
+            newQuestions.filter(question => question != null) : [];
+        
+        // Update local state
+        questions[userId] = validQuestions;
+        
+        // Update UI only if this is the current user
+        if (userId === currentUserId) {
+            updateReceivedQuestions();
         }
+    });
+    
+    // Remove the problematic child_added listener that was causing issues
+    // Instead, listen to all questions for updates to asked questions
+    firebase.database().ref('questions').on('value', (snapshot) => {
+        const allQuestions = snapshot.val() || {};
+        
+        // Update local questions state
+        questions = allQuestions;
+        
+        // Update asked questions UI
+        updateAskedQuestions();
+    });
+    
+    // Keep other listeners unchanged
+    firebase.database().ref(`users/${userId}`).on('value', (snapshot) => {
+        const userData = snapshot.val();
+        if (userData) {
+            const userIndex = users.findIndex(u => u.id === userId);
+            if (userIndex >= 0) {
+                users[userIndex] = {...users[userIndex], ...userData};
+            } else {
+                users.push({id: userId, ...userData});
+            }
+            applyTheme(userData);
+            updateUI();
+        }
+    });
+    
+    firebase.database().ref('settings').on('value', (snapshot) => {
+        settings = snapshot.val() || { mode: 'open_both' };
+    });
+}
+//---------------------------------------------------------------------------------------------------------        
         function showMessage(type, text) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `${type}-message`;
@@ -667,7 +635,7 @@
                 if (msg) msg.remove();
             }, type === 'error' ? 5000 : 3000);
         }
-
+//---------------------------------------------------------------------------------------------------------            
         function updateUI() {
             const urlParams = new URLSearchParams(window.location.search);
             let userId = urlParams.get('user');
@@ -742,7 +710,37 @@
                 messageDiv.innerHTML = '';
             }, 3000);
             
-            saveDataToFirebase();
+            //saveDataToFirebase();
+            if (!questions[targetUserId]) {
+        questions[targetUserId] = [];
+    }
+    
+    const questionId = 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    const newQuestion = {
+        id: questionId,
+        text: questionText,
+        timestamp: new Date().toLocaleString(),
+        from: currentUserId,
+        mode: settings.mode || 'open_both'
+    };
+    
+    // Add to local state
+    questions[targetUserId].push(newQuestion);
+    
+    // Save directly to Firebase
+    firebase.database().ref(`questions/${targetUserId}`).set(questions[targetUserId])
+        .then(() => {
+            questionInput.value = '';
+            messageDiv.innerHTML = '<div class="success-message">Pytanie zostało wysłane pomyślnie!</div>';
+            setTimeout(() => messageDiv.innerHTML = '', 3000);
+        })
+        .catch((error) => {
+            console.error('Error sending question:', error);
+            // Remove from local state if save failed
+            questions[targetUserId].pop();
+            messageDiv.innerHTML = '<div class="error-message">Błąd wysyłania pytania</div>';
+        });
         }
 
         async function saveDataToFirebase() {
@@ -902,9 +900,6 @@
         }
         
         async function sendAnswer(questionId) {
-    const maxRetries = 3;
-    let attempt = 0;
-    
     const textarea = document.querySelector(`[data-question-id="${questionId}"]`);
     const checkbox = document.querySelector(`[data-question-id="${questionId}"][type="checkbox"]`);
     
@@ -915,28 +910,7 @@
     
     // Find the question by ID
     const userQuestions = questions[currentUserId] || [];
-    let questionIndex = userQuestions.findIndex(q => q.id === questionId);
-    
-    // If question not found by ID, try to find by other means and assign ID
-    if (questionIndex === -1) {
-        console.warn(`Question with ID ${questionId} not found, attempting recovery...`);
-        
-        // Try to find a question without ID that matches the textarea
-        const textareaValue = textarea.value.trim();
-        for (let i = 0; i < userQuestions.length; i++) {
-            if (!userQuestions[i].id && !userQuestions[i].answer) {
-                // Assign the expected ID to this question
-                userQuestions[i].id = questionId;
-                questionIndex = i;
-                console.log(`Assigned ID ${questionId} to question at index ${i}`);
-                
-                // Save the updated question with ID
-                firebase.database().ref(`questions/${currentUserId}/${i}/id`).set(questionId)
-                    .catch(error => console.error('Error updating question ID:', error));
-                break;
-            }
-        }
-    }
+    let questionIndex = userQuestions.findIndex(q => q && q.id === questionId);
     
     if (questionIndex === -1) {
         alert('Nie znaleziono pytania');
@@ -961,61 +935,41 @@
     submitButton.disabled = true;
     submitButton.textContent = 'Wysyłanie...';
     
-    while (attempt < maxRetries) {
-        try {
-            attempt++;
-            console.log(`Attempt ${attempt} to save answer for question ${questionId}`);
-            
-            // Create a deep copy and add the answer
-            const updatedQuestions = JSON.parse(JSON.stringify(questions));
-            updatedQuestions[currentUserId][questionIndex].answer = answerData;
-            
-            // Save to Firebase
-            await firebase.database().ref(`questions/${currentUserId}/${questionIndex}/answer`).set(answerData);
-            
-            // Wait a moment and then verify the save
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Verify the answer was saved
-            const snapshot = await firebase.database().ref(`questions/${currentUserId}/${questionIndex}/answer`).once('value');
-            const savedAnswer = snapshot.val();
-            
-            if (savedAnswer && savedAnswer.text === answerData.text) {
-                // Success - update local data
-                questions = updatedQuestions;
-                console.log(`Answer saved successfully on attempt ${attempt}`);
+    try {
+        // Use Firebase transaction to safely update just the answer field
+        const questionRef = firebase.database().ref(`questions/${currentUserId}/${questionIndex}`);
+        
+        await firebase.database().ref().transaction((currentData) => {
+            if (currentData && currentData.questions && currentData.questions[currentUserId] && 
+                currentData.questions[currentUserId][questionIndex]) {
                 
-                // Re-enable button
-                submitButton.disabled = false;
-                submitButton.textContent = originalButtonText;
+                // Check if answer already exists (prevent double submission)
+                if (currentData.questions[currentUserId][questionIndex].answer) {
+                    return; // Abort transaction
+                }
                 
-                // Update UI
-                updateReceivedQuestions();
-                return;
-            } else {
-                throw new Error('Answer verification failed - data not found in database');
+                // Add the answer
+                currentData.questions[currentUserId][questionIndex].answer = answerData;
             }
-            
-        } catch (error) {
-            console.error(`Attempt ${attempt} failed:`, error);
-            
-            if (attempt === maxRetries) {
-                // All attempts failed
-                submitButton.disabled = false;
-                submitButton.textContent = originalButtonText;
-                alert(`Nie udało się zapisać odpowiedzi po ${maxRetries} próbach. Spróbuj ponownie później.\n\nBłąd: ${error.message}`);
-                return;
-            }
-            
-            // Wait before retry (exponential backoff)
-            const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
-            submitButton.textContent = `Ponowna próba za ${waitTime/1000}s...`;
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-            submitButton.textContent = 'Wysyłanie...';
-        }
+            return currentData;
+        });
+        
+        console.log(`Answer saved successfully for question ${questionId}`);
+        
+        // Re-enable button
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+        
+        // The Firebase listener will automatically update the UI
+        
+    } catch (error) {
+        console.error('Error saving answer:', error);
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+        alert(`Nie udało się zapisać odpowiedzi: ${error.message}`);
     }
 }
-        
+//-------------------------------------------------------------------------------------------------------
         async function saveDataToFirebase() {
             if (!db) {
                 console.error('Database not initialized');
