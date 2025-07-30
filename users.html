@@ -711,11 +711,7 @@
             }, 3000);
             
             //saveDataToFirebase();
-            if (!questions[targetUserId]) {
-        questions[targetUserId] = [];
-    }
-    
-    const questionId = 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            // const questionId = 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
     const newQuestion = {
         id: questionId,
@@ -761,6 +757,9 @@
                 showMessage('error', 'Błąd zapisu: ' + error.message);
             }
         }
+    }
+    
+    
 
        function updateReceivedQuestions() {
             const focusedElement = document.activeElement;
